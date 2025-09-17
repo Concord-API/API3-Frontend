@@ -1,10 +1,12 @@
 import { create } from 'zustand'
 import { authService } from '../services/authService'
+import type { UserRole } from '@/shared/constants/roles'
 
 export type AuthUser = {
   id: string
   name: string
   email: string
+  role: UserRole
 }
 
 type AuthState = {

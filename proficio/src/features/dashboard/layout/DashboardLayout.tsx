@@ -1,5 +1,14 @@
 import { Outlet, NavLink, useNavigate, useLocation, matchPath } from 'react-router-dom'
 import { Button } from '@/shared/components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/shared/components/ui/dropdown-menu'
 import {
   Sidebar,
   SidebarContent,
@@ -18,7 +27,8 @@ import {
 } from '@/shared/components/ui/sidebar'
 import { Separator } from '@/shared/components/ui/separator'
 import { useAuth } from '@/features/auth/hooks/useAuth'
-import { HomeIcon, SettingsIcon, UsersIcon } from 'lucide-react'
+import { HomeIcon } from 'lucide-react'
+import { getRoutesForRole } from '@/features/dashboard/routes/dashboardRoutes'
 import { AnimatedLogo } from '@/shared/components/AnimatedLogo'
 import logoUrl from '@/assets/logo.svg'
 
@@ -64,38 +74,57 @@ export function DashboardLayout() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isRouteActive('/dashboard', true)} tooltip="Home">
-                    <NavLink to="/dashboard" end>
-                      <HomeIcon />
-                      <span>Home</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isRouteActive('/dashboard/users')} tooltip="Users">
-                    <NavLink to="/dashboard/users">
-                      <UsersIcon />
-                      <span>Users</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isRouteActive('/dashboard/settings')} tooltip="Settings">
-                    <NavLink to="/dashboard/settings">
-                      <SettingsIcon />
-                      <span>Settings</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                {getRoutesForRole(user?.role ?? 'FUNCIONARIO').map((r) => (
+                  <SidebarMenuItem key={r.path || 'root'}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isRouteActive(`/dashboard/${r.path}`, r.path === '')}
+                      tooltip={r.label}
+                    >
+                      <NavLink to={`/dashboard/${r.path}`.replace(/\/$/, '')} end={r.path === ''}>
+                        {/* ícones reais podem ser adicionados em dashboardRoutes */}
+                        <HomeIcon />
+                        <span>{r.label}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
         <SidebarSeparator />
         <SidebarFooter>
-          <div className="px-2 text-xs text-muted-foreground truncate">{user?.email}</div>
-          <Button variant="outline" onClick={handleLogout}>Sair</Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-full flex items-center gap-2 rounded-md border px-2 py-2 text-left hover:bg-accent">
+                <Avatar className="size-7">
+                  <AvatarImage src={"https://github.com/shadcn.png"} alt={user?.name ?? 'Usuário'} />
+                  <AvatarFallback>{user?.name?.[0] ?? 'U'}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{user?.name ?? 'Usuário'}</div>
+                  <div className="truncate text-xs text-muted-foreground">{user?.email ?? 'm@example.com'}</div>
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="start" alignOffset={0} sideOffset={8} collisionPadding={12} className="w-64">
+              <DropdownMenuLabel>
+                <div className="flex items-center gap-2">
+                  <Avatar className="size-8">
+                    <AvatarImage src={"https://github.com/shadcn.png"} alt={user?.name ?? 'Usuário'} />
+                    <AvatarFallback>{user?.name?.[0] ?? 'U'}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium leading-none truncate">{user?.name ?? 'Usuário'}</div>
+                    <div className="text-xs text-muted-foreground truncate">{user?.email ?? 'm@example.com'}</div>
+                  </div>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>

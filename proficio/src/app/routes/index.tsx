@@ -1,11 +1,10 @@
 import { Navigate, Outlet, createBrowserRouter } from "react-router-dom"
 import { DashboardLayout } from "@/features/dashboard/layout/DashboardLayout"
-import { Home } from "@/features/dashboard/pages/Home"
-import { Users } from "@/features/dashboard/pages/Users"
-import { Settings } from "@/features/dashboard/pages/Settings"
 import { Login } from "@/features/auth/pages/Login"
 import { ForgotPassword } from "@/features/auth/pages/ForgotPassword"
 import { useAuth } from "@/features/auth/hooks/useAuth"
+import { RoleGate } from "@/features/dashboard/components/RoleGate"
+import { dashboardRoutes } from "@/features/dashboard/routes/dashboardRoutes"
 
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth()
@@ -33,11 +32,10 @@ export const router = createBrowserRouter([
       {
         path: "",
         element: <DashboardLayout />,
-        children: [
-          { path: "", element: <Home /> },
-          { path: "users", element: <Users /> },
-          { path: "settings", element: <Settings /> },
-        ],
+        children: dashboardRoutes.map((r) => ({
+          path: r.path,
+          element: <RoleGate allowed={r.allowedRoles}>{r.element}</RoleGate>,
+        })),
       },
     ],
   },
