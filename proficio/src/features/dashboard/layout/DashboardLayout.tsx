@@ -19,6 +19,8 @@ import {
 import { Separator } from '@/shared/components/ui/separator'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { HomeIcon, SettingsIcon, UsersIcon } from 'lucide-react'
+import { AnimatedLogo } from '@/shared/components/AnimatedLogo'
+import logoUrl from '@/assets/logo.svg'
 
 export function DashboardLayout() {
   const { logout, user } = useAuth()
@@ -43,7 +45,20 @@ export function DashboardLayout() {
     >
       <Sidebar variant="inset" collapsible="icon">
         <SidebarHeader>
-          <div className="px-2 py-1 text-sm font-semibold">Dashboard</div>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                size="lg"
+                className="justify-start group-data-[collapsible=icon]:justify-center"
+              >
+                <NavLink to="/dashboard">
+                  <AnimatedLogo src={logoUrl} className="size-7" />
+                  <span className="font-semibold group-data-[collapsible=icon]:hidden">Proficio</span>
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
