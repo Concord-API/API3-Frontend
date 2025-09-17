@@ -6,5 +6,3 @@ export function Home() {
     </div>
   )
 }
-
-
