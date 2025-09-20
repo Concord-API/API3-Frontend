@@ -1,5 +1,5 @@
 export const ROLES = {
-  FUNCIONARIO: 'FUNCIONARIO',
+  COLABORADOR: 'COLABORADOR',
   GESTOR: 'GESTOR',
   DIRETOR: 'DIRETOR',
 } as const
@@ -7,7 +7,7 @@ export const ROLES = {
 export type UserRole = typeof ROLES[keyof typeof ROLES]
 
 export const ROLE_LABEL: Record<UserRole, string> = {
-  FUNCIONARIO: 'Funcionário',
+  COLABORADOR: 'Colaborador',
   GESTOR: 'Gestor',
   DIRETOR: 'Diretor',
 }

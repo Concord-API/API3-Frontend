@@ -18,7 +18,7 @@ export function Login() {
       <div className="grid grid-cols-1 md:grid-cols-2">
         <div className="hidden md:flex items-center justify-center p-6 md:p-10">
           <div className="max-w-2xl space-y-4">
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center mr-4">
               <AnimatedLogo src={logoUrl} className="h-32 md:h-32" />
               <FadeInLeft>
                 <h2 className="text-6xl md:text-7xl font-extrabold tracking-tight">Proficio</h2>

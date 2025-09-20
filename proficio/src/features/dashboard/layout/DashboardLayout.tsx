@@ -74,7 +74,7 @@ export function DashboardLayout() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {getRoutesForRole(user?.role ?? 'FUNCIONARIO').map((r) => (
+                {getRoutesForRole(user?.role ?? 'COLABORADOR').map((r) => (
                   <SidebarMenuItem key={r.path || 'root'}>
                     <SidebarMenuButton
                       asChild

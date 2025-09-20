@@ -10,13 +10,13 @@ export const authService = {
 
     // Mock com 3 usuários para teste
     const users = [
-      { id: 'u1', name: 'Funcionário', email: 'funcionario@example.com', role: ROLES.FUNCIONARIO },
+      { id: 'u1', name: 'Colaborador', email: 'colaborador@example.com', role: ROLES.COLABORADOR },
       { id: 'u2', name: 'Gestor', email: 'gestor@example.com', role: ROLES.GESTOR },
       { id: 'u3', name: 'Diretor', email: 'diretor@example.com', role: ROLES.DIRETOR },
     ] as const
 
     const found = users.find((u) => u.email.toLowerCase() === _payload.email.toLowerCase())
-    const user = found ?? { id: 'u1', name: 'Funcionário', email: _payload.email, role: ROLES.FUNCIONARIO }
+    const user = found ?? { id: 'u1', name: 'Colaborador', email: _payload.email, role: ROLES.COLABORADOR }
 
     return {
       token: `fake-token-${Date.now()}`,
