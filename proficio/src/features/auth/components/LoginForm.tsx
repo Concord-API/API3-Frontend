@@ -22,13 +22,22 @@ export function LoginForm({
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
+    setError(null)
     try {
       await login({ email, password })
       navigate("/dashboard")
+    } catch (err: any) {
+      const status = err?.response?.status
+      if (status === 401) {
+        setError('Usuário ou senha inválidos.')
+      } else {
+        setError('Não foi possível fazer login. Tente novamente.')
+      }
     } finally {
       setLoading(false)
     }
@@ -74,6 +83,11 @@ export function LoginForm({
                 </a>
               </div>
               <div className="flex flex-col gap-3">
+                {error && (
+                  <div className="text-sm text-red-500" role="alert">
+                    {error}
+                  </div>
+                )}
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Entrando..." : "Login"}
                 </Button>
