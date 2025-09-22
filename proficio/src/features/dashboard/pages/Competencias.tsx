@@ -6,10 +6,11 @@ import { Label } from '@/shared/components/ui/label'
 import { Separator } from '@/shared/components/ui/separator'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetDescription, SheetTrigger, SheetClose } from '@/shared/components/ui/sheet'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { api } from '@/shared/lib/api'
 import type { ColaboradorCompetencia, Competencia } from '@/shared/types'
-import { ChevronDown, Check } from 'lucide-react'
+import { ChevronDown, Check, Trash } from 'lucide-react'
 import { toast } from 'sonner'
 
 type UserCompetenciaItem = ColaboradorCompetencia & { competencia: Competencia }
@@ -27,6 +28,9 @@ export function Competencias() {
   const [allCompetencias, setAllCompetencias] = useState<Competencia[]>([])
   const [userCompetencias, setUserCompetencias] = useState<UserCompetenciaItem[]>([])
   const [loading, setLoading] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editItem, setEditItem] = useState<UserCompetenciaItem | null>(null)
+  const [editLevel, setEditLevel] = useState<number>(3)
 
   // Adicionar nova
   const [query, setQuery] = useState('')
@@ -246,6 +250,7 @@ export function Competencias() {
                   <th className="py-2 pr-4 font-medium">Competência</th>
                   <th className="py-2 pr-4 font-medium">Tipo</th>
                   <th className="py-2 pr-4 font-medium">Proeficiência</th>
+                  <th className="py-2 pr-2 font-medium text-right">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -257,13 +262,16 @@ export function Competencias() {
                 {displayed.map((uc) => {
                   const pct = Math.min(100, Math.max(0, (uc.proeficiencia / 5) * 100))
                   const color = uc.proeficiencia >= 5 ? 'bg-emerald-500' : uc.proeficiencia >= 4 ? 'bg-green-500' : uc.proeficiencia >= 3 ? 'bg-blue-500' : uc.proeficiencia >= 2 ? 'bg-amber-500' : 'bg-red-500'
+                  const typeBadge = uc.competencia?.tipo === 'HARD'
+                    ? 'bg-blue-100 text-blue-700 border-blue-200'
+                    : 'bg-violet-100 text-violet-700 border-violet-200'
                   return (
                     <tr key={uc.id} className="border-t">
                       <td className="py-3 pr-4">
                         <div className="font-medium truncate">{uc.competencia?.nome}</div>
                       </td>
                       <td className="py-3 pr-4">
-                        <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${typeBadge}`}>
                           {uc.competencia?.tipo}
                         </span>
                       </td>
@@ -275,6 +283,15 @@ export function Competencias() {
                           <div className="whitespace-nowrap text-xs text-muted-foreground">{NIVEL_LABEL[uc.proeficiencia]} ({uc.proeficiencia}/5)</div>
                         </div>
                       </td>
+                      <td className="py-3 pr-2 text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => { setEditItem(uc); setEditLevel(uc.proeficiencia); setEditOpen(true) }}
+                        >
+                          Editar
+                        </Button>
+                      </td>
                     </tr>
                   )
                 })}
@@ -283,6 +300,73 @@ export function Competencias() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Editar competência</DialogTitle>
+            <DialogDescription>Atualize a proeficiência desta competência</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label>Competência</Label>
+              <Input value={editItem?.competencia?.nome ?? ''} readOnly />
+            </div>
+            <div className="space-y-2">
+              <Label>Proeficiência: {editLevel} — {NIVEL_LABEL[editLevel]}</Label>
+              <input
+                type="range"
+                min={1}
+                max={5}
+                step={1}
+                value={editLevel}
+                onChange={(e) => setEditLevel(Number(e.target.value))}
+                className="w-full accent-primary"
+              />
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-between">
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!user?.id || !editItem) return
+                setLoading(true)
+                try {
+                  await api.delete('/usuario/competencias', { data: { id: user.id, id_item: editItem.id }})
+                  await loadData()
+                  toast.success('Competência removida')
+                  setEditOpen(false)
+                } finally {
+                  setLoading(false)
+                }
+              }}
+              disabled={loading}
+            >
+              <Trash className="size-4" />
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!user?.id || !editItem) return
+                setLoading(true)
+                try {
+                  await api.patch('/usuario/competencias', {
+                    id: user.id,
+                    competencias: [{ id: editItem.id, id_competencia: editItem.id_competencia, proeficiencia: editLevel }],
+                  })
+                  await loadData()
+                  toast.success('Proeficiência atualizada')
+                  setEditOpen(false)
+                } finally {
+                  setLoading(false)
+                }
+              }}
+              disabled={loading}
+            >
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

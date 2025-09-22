@@ -30,6 +30,7 @@ export interface Colaborador {
     sobrenome: string;
     status_col: boolean;
     foto_url?: string | null;
+    updated_at?: string | null;
     id_equipe: number;
     id_cargo: number;
     equipe?: Equipe;

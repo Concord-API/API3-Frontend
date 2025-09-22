@@ -40,6 +40,10 @@ export function PerfilColaborador() {
       setProfileCargo(data.cargo?.nome_cargo ?? '—')
       setProfileLocation(data.equipe?.setor?.nome_setor ?? '')
       setProfilePhoto(data.foto_url ?? undefined)
+      
+      if (data.updated_at) {
+        setLastUpdated(new Date(data.updated_at))
+      }
       const destacadasFull = (data.competencias ?? [])
         .filter((cc) => cc.ordem != null && (cc.ordem as number) > 0)
         .slice()
@@ -66,6 +70,20 @@ export function PerfilColaborador() {
     copy.splice(end, 0, removed)
     return copy
   }
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+
+  function formatRelative(date: Date | null) {
+    if (!date) return '—'
+    const diffMs = Date.now() - date.getTime()
+    const minutes = Math.floor(diffMs / 60000)
+    if (minutes < 1) return 'agora'
+    if (minutes < 60) return `há ${minutes} min`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `há ${hours} h`
+    const days = Math.floor(hours / 24)
+    return `há ${days} dias`
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -89,6 +107,7 @@ export function PerfilColaborador() {
                     // Emulação de upload: salva URL local no perfil (mock)
                     await api.patch('/perfil', { id: user!.id, foto_url: url })
                     setProfilePhoto(url)
+                    setLastUpdated(new Date())
                     toast.success('Foto de perfil atualizada')
                   }}
                 />
@@ -127,11 +146,15 @@ export function PerfilColaborador() {
                   Você ainda não possui competências em destaque. Use "Editar perfil" para selecionar até 4.
                 </div>
               )}
-              {skills.map((s) => (
-                <span key={s} className="rounded-md border px-2 py-1 text-xs">
-                  {s}
-                </span>
-              ))}
+              {skills.map((s, idx) => {
+                const palette = ['bg-blue-100 text-blue-800 border-blue-200','bg-emerald-100 text-emerald-800 border-emerald-200','bg-amber-100 text-amber-800 border-amber-200','bg-violet-100 text-violet-800 border-violet-200']
+                const cls = palette[idx % palette.length]
+                return (
+                  <span key={s} className={`rounded-md border px-2 py-1 text-xs ${cls}`}>
+                    {s}
+                  </span>
+                )
+              })}
               <Drawer direction="right" open={drawerOpen} onOpenChange={setDrawerOpen}>
                 <DrawerTrigger asChild>
                   <Button
@@ -229,6 +252,7 @@ export function PerfilColaborador() {
                               .map((cc) => ({ id: cc.id, nome: cc.competencia?.nome ?? '', ordem: (cc.ordem as number) }))
                               .filter((i) => Boolean(i.nome))
                             setSkillItems(atualizadas.slice(0, 4))
+                            if (data.updated_at) setLastUpdated(new Date(data.updated_at))
                             toast.success('Competências destacadas atualizadas')
                           } finally {
                             setDrawerOpen(false)
@@ -258,7 +282,7 @@ export function PerfilColaborador() {
               <Separator />
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Última atualização</span>
-                <span className="text-sm font-medium">há 2 dias</span>
+                <span className="text-sm font-medium">{formatRelative(lastUpdated)}</span>
               </div>
             </div>
           </CardContent>

@@ -56,7 +56,10 @@ export const handlers = [
     // Atualização de foto
     if (typeof body.foto_url === 'string') {
       const colab = colaboradores.find(c => c.id_colaborador === colabId)
-      if (colab) colab.foto_url = body.foto_url
+      if (colab) {
+        colab.foto_url = body.foto_url
+        colab.updated_at = new Date().toISOString()
+      }
     }
 
     // Atualização de competências (cria se vier id_competencia sem id) e SETA ordem apenas nas destacadas (demais ficam null)
@@ -97,6 +100,9 @@ export const handlers = [
       const item = colaboradorCompetencias.find(cc => cc.id === pair.id && cc.id_colaborador === colabId)
       if (item) item.ordem = pair.ordem
     }
+    // seta updated_at ao salvar competências
+    const colab = colaboradores.find(c => c.id_colaborador === colabId)
+    if (colab) colab.updated_at = new Date().toISOString()
     return HttpResponse.json({ ok: true }, { status: 200 })
   }),
   // Lista de competências
@@ -149,6 +155,20 @@ export const handlers = [
           item.proeficiencia = u.proeficiencia
         }
       }
+    }
+    return HttpResponse.json({ ok: true }, { status: 200 })
+  }),
+
+  // Competências do usuário (excluir)
+  http.delete('/api/usuario/competencias', async ({ request }) => {
+    const body = await request.json().catch(() => ({} as any)) as { id?: string; id_item?: number }
+    const authUser = authUsersMock.find((u) => u.id === body.id)
+    if (!authUser) return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
+    const colabId = emailToColaboradorId[authUser.email.toLowerCase()]
+    if (!colabId) return HttpResponse.json({ message: 'Colaborador não encontrado' }, { status: 404 })
+    const idx = colaboradorCompetencias.findIndex(cc => cc.id === (body.id_item as number) && cc.id_colaborador === colabId)
+    if (idx >= 0) {
+      colaboradorCompetencias.splice(idx, 1)
     }
     return HttpResponse.json({ ok: true }, { status: 200 })
   }),
