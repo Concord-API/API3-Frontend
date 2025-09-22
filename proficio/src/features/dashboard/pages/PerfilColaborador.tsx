@@ -2,18 +2,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/sha
 import { Button } from '@/shared/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { Separator } from '@/shared/components/ui/separator'
-import { Tooltip, TooltipTrigger } from '@/shared/components/ui/tooltip'
+// import { Tooltip, TooltipTrigger } from '@/shared/components/ui/tooltip'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerTrigger, DrawerFooter, DrawerClose } from '@/shared/components/ui/drawer'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { api } from '@/shared/lib/api'
 import type { Colaborador, ColaboradorCompetencia } from '@/shared/types'
 import { SquarePen, GripVertical, X, Camera } from 'lucide-react'
 import { toast } from 'sonner'
+import { AvatarEditorModal } from '@/features/dashboard/components/AvatarEditorModal'
 
 export function PerfilColaborador() {
   const { user } = useAuth()
-  const [editMode, setEditMode] = useState(false)
+  const [editMode] = useState(true)
   const [skills, setSkills] = useState<string[]>([])
   const [skillItems, setSkillItems] = useState<{ id: number; nome: string; ordem: number }[]>([])
   const [profileEmail, setProfileEmail] = useState<string>('')
@@ -21,15 +22,22 @@ export function PerfilColaborador() {
   const [profileCargo, setProfileCargo] = useState<string>('')
   const [profileLocation, setProfileLocation] = useState<string>('')
   const [profilePhoto, setProfilePhoto] = useState<string | undefined>(undefined)
+  const [profileCover, setProfileCover] = useState<string | undefined>(undefined)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [draftSkills, setDraftSkills] = useState<string[]>(skills)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [allCompetencias, setAllCompetencias] = useState<{ id_competencia: number; nome: string }[]>([])
+  // crop state
+  const [avatarCropOpen, setAvatarCropOpen] = useState(false)
+  const [avatarSrc, setAvatarSrc] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (drawerOpen) setDraftSkills(skills)
   }, [drawerOpen, skills])
+
+  // croppie handled inside AvatarEditorModal
 
   useEffect(() => {
     async function fetchProfile() {
@@ -40,9 +48,13 @@ export function PerfilColaborador() {
       setProfileCargo(data.cargo?.nome_cargo ?? '—')
       setProfileLocation(data.equipe?.setor?.nome_setor ?? '')
       setProfilePhoto(data.foto_url ?? undefined)
+      setProfileCover(data.cover_url ?? undefined)
       
       if (data.updated_at) {
         setLastUpdated(new Date(data.updated_at))
+      }
+      if (data.created_at) {
+        setCreatedAtDate(new Date(data.created_at))
       }
       const destacadasFull = (data.competencias ?? [])
         .filter((cc) => cc.ordem != null && (cc.ordem as number) > 0)
@@ -71,6 +83,7 @@ export function PerfilColaborador() {
     return copy
   }
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [createdAtDate, setCreatedAtDate] = useState<Date | null>(null)
 
   function formatRelative(date: Date | null) {
     if (!date) return '—'
@@ -84,54 +97,120 @@ export function PerfilColaborador() {
     return `há ${days} dias`
   }
 
+  function formatTenure(date: Date | null) {
+    if (!date) return '—'
+    const now = new Date()
+    let years = now.getFullYear() - date.getFullYear()
+    let months = now.getMonth() - date.getMonth()
+    let days = now.getDate() - date.getDate()
+    if (days < 0) {
+      const prevMonth = new Date(now.getFullYear(), now.getMonth(), 0).getDate()
+      days += prevMonth
+      months -= 1
+    }
+    if (months < 0) {
+      months += 12
+      years -= 1
+    }
+    const parts = [] as string[]
+    if (years > 0) parts.push(`${years} ${years === 1 ? 'ano' : 'anos'}`)
+    if (months > 0) parts.push(`${months} ${months === 1 ? 'mês' : 'meses'}`)
+    if (days > 0 || parts.length === 0) parts.push(`${days} ${days === 1 ? 'dia' : 'dias'}`)
+    return parts.join(' ')
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Capa estilo social */}
+      <div className="relative h-40 md:h-56 w-full overflow-hidden rounded-xl border">
+        <img
+          src={profileCover ?? 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1600&auto=format&fit=crop'}
+          alt="Capa"
+          className="h-full w-full object-cover"
+        />
+        {editMode && (
+          <div className="absolute bottom-2 right-2">
+            <input id="upload-cover" type="file" accept="image/*" className="hidden"
+              onChange={async (e) => {
+                const f = e.target.files?.[0]
+                if (!f) return
+                const url = URL.createObjectURL(f)
+                setProfileCover(url)
+                await api.patch('/perfil', { id: user!.id, cover_url: url })
+                setLastUpdated(new Date())
+                toast.success('Capa atualizada')
+              }}
+            />
+            <label htmlFor="upload-cover" className="rounded-md border bg-background/90 px-2 py-1 text-xs shadow-sm cursor-pointer hover:bg-accent">
+              Alterar capa
+            </label>
+          </div>
+        )}
+      </div>
+      {/* Header card social-like */}
+      <Card className="relative -mt-10 px-6 py-5 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="relative">
-            <Avatar className="size-16">
+          <div className="relative -mt-12">
+            <Avatar className="size-24 ring-2 ring-background shadow-md">
               <AvatarImage src={photoPreview ?? profilePhoto ?? undefined} alt="Colaborador" />
               <AvatarFallback>CL</AvatarFallback>
             </Avatar>
-            {editMode && (
-              <label className="absolute inset-0 grid place-items-center bg-black/40 rounded-full cursor-pointer group">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0]
-                    if (!file) return
-                    const url = URL.createObjectURL(file)
-                    setPhotoPreview(url)
-                    // Emulação de upload: salva URL local no perfil (mock)
-                    await api.patch('/perfil', { id: user!.id, foto_url: url })
-                    setProfilePhoto(url)
-                    setLastUpdated(new Date())
-                    toast.success('Foto de perfil atualizada')
-                  }}
-                />
-                <span className="flex items-center gap-1 text-xs text-white opacity-100 group-hover:opacity-100">
-                  <Camera className="size-4" /> Editar
-                </span>
-              </label>
+             {editMode && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => { setAvatarSrc(photoPreview ?? profilePhoto ?? null); setAvatarCropOpen(true) }}
+                  className="absolute -bottom-1 -right-1 grid place-items-center rounded-full border bg-background p-2 shadow-sm hover:bg-accent"
+                >
+                  <Camera className="size-4 text-muted-foreground" />
+                </button>
+              </>
             )}
           </div>
-          <div>
-            <h1 className="text-2xl font-semibold">Seu perfil</h1>
-            <p className="text-muted-foreground text-sm">Informações e habilidades do colaborador</p>
+          <div className="min-w-0 flex-1">
+            <div className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground truncate">
+              {profileName || user?.name || ''}
+            </div>
+            <div className="mt-1 flex items-center gap-3 flex-wrap text-sm">
+              <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium bg-primary/10 text-primary/80 border-primary/20">
+                {profileCargo || '—'}
+              </span>
+              <span className="text-xs text-muted-foreground">{profileLocation || '—'}</span>
+              <span className="text-xs text-muted-foreground">Vínculo: {formatTenure(createdAtDate)}</span>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" onClick={() => setEditMode((v) => !v)}>
-                {editMode ? 'Concluir' : 'Editar perfil'}
-              </Button>
-            </TooltipTrigger>
-          </Tooltip>
-        </div>
-      </div>
+      </Card>
+
+      {/* Input para o componente abrir seletor */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (!f) return
+          const url = URL.createObjectURL(f)
+          setAvatarSrc(url)
+        }}
+      />
+      <AvatarEditorModal
+        open={avatarCropOpen}
+        src={avatarSrc ?? (profilePhoto ?? null)}
+        onPick={() => fileInputRef.current?.click()}
+        onClose={() => { setAvatarCropOpen(false); setAvatarSrc(null) }}
+        onSave={async (blob) => {
+          const url = URL.createObjectURL(blob)
+          setPhotoPreview(url)
+          await api.patch('/perfil', { id: user!.id, foto_url: url })
+          setProfilePhoto(url)
+          setLastUpdated(new Date())
+          toast.success('Foto de perfil atualizada')
+          setAvatarCropOpen(false)
+          setAvatarSrc(null)
+        }}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         <Card className="lg:col-span-2">
@@ -299,6 +378,10 @@ export function PerfilColaborador() {
             <div>
             <div className="text-xs text-muted-foreground">Nome</div>
             <div className="text-sm font-medium">{profileName || user?.name || '—'}</div>
+            </div>
+            <div>
+            <div className="text-xs text-muted-foreground">Vínculo</div>
+            <div className="text-sm font-medium">{formatTenure(createdAtDate)}</div>
             </div>
             <div>
             <div className="text-xs text-muted-foreground">Cargo</div>

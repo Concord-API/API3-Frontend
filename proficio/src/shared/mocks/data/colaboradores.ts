@@ -5,7 +5,7 @@ export const setores: Setor[] = [
 ]
 
 export const cargos: Cargo[] = [
-  { id_cargo: 1, nome_cargo: 'Desenvolvedor', id_setor: 1, setor: setores[0] },
+  { id_cargo: 1, nome_cargo: 'Desenvolvedor Banckend Junior', id_setor: 1, setor: setores[0] },
   { id_cargo: 2, nome_cargo: 'Gestor de Projetos', id_setor: 1, setor: setores[0] },
   { id_cargo: 3, nome_cargo: 'Diretor de Tecnologia', id_setor: 1, setor: setores[0] },
 ]
@@ -28,9 +28,48 @@ export const competencias: Competencia[] = [
 ]
 
 export const colaboradores: Colaborador[] = [
-  { id_colaborador: 101, nome: 'Colaborador', sobrenome: 'Exemplo', status_col: true, foto_url: null, updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), id_equipe: 1, id_cargo: 1, equipe: equipes[0], cargo: cargos[0] },
-  { id_colaborador: 102, nome: 'Gestor', sobrenome: 'Exemplo', status_col: true, foto_url: null, updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), id_equipe: 1, id_cargo: 2, equipe: equipes[0], cargo: cargos[1] },
-  { id_colaborador: 103, nome: 'Diretor', sobrenome: 'Exemplo', status_col: true, foto_url: null, updated_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), id_equipe: 1, id_cargo: 3, equipe: equipes[0], cargo: cargos[2] },
+  {
+    id_colaborador: 101,
+    nome: 'Ana',
+    sobrenome: 'Silva',
+    status_col: true,
+    foto_url: null,
+    cover_url: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1600&auto=format&fit=crop",
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 400).toISOString(),
+    updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
+    id_equipe: 1,
+    id_cargo: 1,
+    equipe: equipes[0],
+    cargo: cargos[0],
+  },
+  {
+    id_colaborador: 102,
+    nome: 'Bruno',
+    sobrenome: 'Lima',
+    status_col: true,
+    foto_url: null,
+    cover_url: "https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1600&auto=format&fit=crop",
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 800).toISOString(),
+    updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
+    id_equipe: 1,
+    id_cargo: 2,
+    equipe: equipes[0],
+    cargo: cargos[1],
+  },
+  {
+    id_colaborador: 103,
+    nome: 'Carla',
+    sobrenome: 'Souza',
+    status_col: true,
+    foto_url: null,
+    cover_url: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1600&auto=format&fit=crop",
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1200).toISOString(),
+    updated_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
+    id_equipe: 1,
+    id_cargo: 3,
+    equipe: equipes[0],
+    cargo: cargos[2],
+  },
 ]
 
 export const colaboradorCompetencias: ColaboradorCompetencia[] = [

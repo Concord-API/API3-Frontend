@@ -43,7 +43,7 @@ export const handlers = [
   }),
 
   http.patch('/api/perfil', async ({ request }) => {
-    const body = await request.json().catch(() => ({} as any)) as { id?: string; competencias?: { id?: number; id_competencia?: number; ordem: number }[], foto_url?: string }
+    const body = await request.json().catch(() => ({} as any)) as { id?: string; competencias?: { id?: number; id_competencia?: number; ordem: number }[], foto_url?: string, cover_url?: string }
     const authUserId = body?.id ?? ''
     const authUser = authUsersMock.find((u) => u.id === authUserId)
     if (!authUser) {
@@ -58,6 +58,14 @@ export const handlers = [
       const colab = colaboradores.find(c => c.id_colaborador === colabId)
       if (colab) {
         colab.foto_url = body.foto_url
+        colab.updated_at = new Date().toISOString()
+      }
+    }
+    // Atualização de capa
+    if (typeof body.cover_url === 'string') {
+      const colab = colaboradores.find(c => c.id_colaborador === colabId)
+      if (colab) {
+        colab.cover_url = body.cover_url
         colab.updated_at = new Date().toISOString()
       }
     }
