@@ -28,9 +28,9 @@ export const competencias: Competencia[] = [
 ]
 
 export const colaboradores: Colaborador[] = [
-  { id_colaborador: 101, nome: 'Colaborador', sobrenome: 'Exemplo', status_col: true, foto_url: null, id_equipe: 1, id_cargo: 1, equipe: equipes[0], cargo: cargos[0] },
-  { id_colaborador: 102, nome: 'Gestor', sobrenome: 'Exemplo', status_col: true, foto_url: null, id_equipe: 1, id_cargo: 2, equipe: equipes[0], cargo: cargos[1] },
-  { id_colaborador: 103, nome: 'Diretor', sobrenome: 'Exemplo', status_col: true, foto_url: null, id_equipe: 1, id_cargo: 3, equipe: equipes[0], cargo: cargos[2] },
+  { id_colaborador: 101, nome: 'Colaborador', sobrenome: 'Exemplo', status_col: true, foto_url: null, updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), id_equipe: 1, id_cargo: 1, equipe: equipes[0], cargo: cargos[0] },
+  { id_colaborador: 102, nome: 'Gestor', sobrenome: 'Exemplo', status_col: true, foto_url: null, updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), id_equipe: 1, id_cargo: 2, equipe: equipes[0], cargo: cargos[1] },
+  { id_colaborador: 103, nome: 'Diretor', sobrenome: 'Exemplo', status_col: true, foto_url: null, updated_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), id_equipe: 1, id_cargo: 3, equipe: equipes[0], cargo: cargos[2] },
 ]
 
 export const colaboradorCompetencias: ColaboradorCompetencia[] = [
