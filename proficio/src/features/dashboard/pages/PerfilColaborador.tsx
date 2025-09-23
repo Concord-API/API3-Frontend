@@ -54,8 +54,8 @@ export function PerfilColaborador() {
       if ((data as any).atualizado_em) {
         setLastUpdated(new Date((data as any).atualizado_em))
       }
-      if (data.created_at) {
-        setCreatedAtDate(new Date(data.created_at))
+      if (data.criado_em) {
+        setCreatedAtDate(new Date(data.criado_em))
       }
       const destacadasFull = (data.competencias ?? [])
         .filter((cc) => cc.ordem != null && (cc.ordem as number) > 0)
