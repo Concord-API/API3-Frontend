@@ -15,22 +15,22 @@ export const equipes: Equipe[] = [
 ]
 
 export const competencias: Competencia[] = [
-  { id_competencia: 1, nome: 'React', tipo: 'HARD' },
-  { id_competencia: 2, nome: 'TypeScript', tipo: 'HARD' },
-  { id_competencia: 3, nome: 'Comunicação', tipo: 'SOFT' },
-  { id_competencia: 4, nome: 'Liderança', tipo: 'SOFT' },
-  { id_competencia: 5, nome: 'Node.js', tipo: 'HARD' },
-  { id_competencia: 6, nome: 'SQL', tipo: 'HARD' },
-  { id_competencia: 7, nome: 'Gestão de Tempo', tipo: 'SOFT' },
-  { id_competencia: 8, nome: 'Resolução de Problemas', tipo: 'SOFT' },
-  { id_competencia: 9, nome: 'Docker', tipo: 'HARD' },
-  { id_competencia: 10, nome: 'Kubernetes', tipo: 'HARD' },
+  { id_competencia: 1, nome: 'React', tipo: 0 },
+  { id_competencia: 2, nome: 'TypeScript', tipo: 0 },
+  { id_competencia: 3, nome: 'Comunicação', tipo: 1 },
+  { id_competencia: 4, nome: 'Liderança', tipo: 1 },
+  { id_competencia: 5, nome: 'Node.js', tipo: 0 },
+  { id_competencia: 6, nome: 'SQL', tipo: 0 },
+  { id_competencia: 7, nome: 'Gestão de Tempo', tipo: 1 },
+  { id_competencia: 8, nome: 'Resolução de Problemas', tipo: 1 },
+  { id_competencia: 9, nome: 'Docker', tipo: 0 },
+  { id_competencia: 10, nome: 'Kubernetes', tipo: 0 },
 ]
 
 export const colaboradores: Colaborador[] = [
-  { id_colaborador: 101, nome: 'Colaborador', sobrenome: 'Exemplo', status_col: true, foto_url: null, updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), id_equipe: 1, id_cargo: 1, equipe: equipes[0], cargo: cargos[0] },
-  { id_colaborador: 102, nome: 'Gestor', sobrenome: 'Exemplo', status_col: true, foto_url: null, updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), id_equipe: 1, id_cargo: 2, equipe: equipes[0], cargo: cargos[1] },
-  { id_colaborador: 103, nome: 'Diretor', sobrenome: 'Exemplo', status_col: true, foto_url: null, updated_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), id_equipe: 1, id_cargo: 3, equipe: equipes[0], cargo: cargos[2] },
+  { id_colaborador: 101, nome: 'Colaborador', sobrenome: 'Exemplo', status_col: true, avatar: null, atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), id_equipe: 1, id_cargo: 1, equipe: equipes[0], cargo: cargos[0] },
+  { id_colaborador: 102, nome: 'Gestor', sobrenome: 'Exemplo', status_col: true, avatar: null, atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), id_equipe: 1, id_cargo: 2, equipe: equipes[0], cargo: cargos[1] },
+  { id_colaborador: 103, nome: 'Diretor', sobrenome: 'Exemplo', status_col: true, avatar: null, atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), id_equipe: 1, id_cargo: 3, equipe: equipes[0], cargo: cargos[2] },
 ]
 
 export const colaboradorCompetencias: ColaboradorCompetencia[] = [

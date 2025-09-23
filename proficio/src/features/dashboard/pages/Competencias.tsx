@@ -15,6 +15,13 @@ import { toast } from 'sonner'
 
 type UserCompetenciaItem = ColaboradorCompetencia & { competencia: Competencia }
 
+// Normaliza valores possíveis de tipo ("HARD"|"SOFT"|0|1) para 0|1
+const normalizeTipo = (t: unknown): 0 | 1 => {
+  if (t === 0 || t === 1) return t as 0 | 1
+  const v = String(t).toUpperCase()
+  return v === 'SOFT' ? 1 : 0
+}
+
 const NIVEL_LABEL: Record<number, string> = {
   1: 'Iniciante',
   2: 'Básico',
@@ -36,7 +43,7 @@ export function Competencias() {
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<Competencia | null>(null)
   const [newLevel, setNewLevel] = useState<number>(3)
-  const [newType, setNewType] = useState<'HARD' | 'SOFT'>('HARD')
+  const [newType, setNewType] = useState<0 | 1>(0)
   const [queryTable, setQueryTable] = useState('')
   const [filterType, setFilterType] = useState<'ALL' | 'HARD' | 'SOFT'>('ALL')
   const [sortKey, setSortKey] = useState<'nivel-desc' | 'nivel-asc' | 'nome-asc'>('nivel-desc')
@@ -50,15 +57,15 @@ export function Competencias() {
   const stats = useMemo(() => {
     const total = userCompetencias.length
     const avg = total ? (userCompetencias.reduce((s, i) => s + i.proeficiencia, 0) / total) : 0
-    const hard = userCompetencias.filter((i) => i.competencia?.tipo === 'HARD').length
-    const soft = userCompetencias.filter((i) => i.competencia?.tipo === 'SOFT').length
+    const hard = userCompetencias.filter((i) => normalizeTipo(i.competencia?.tipo) === 0).length
+    const soft = userCompetencias.filter((i) => normalizeTipo(i.competencia?.tipo) === 1).length
     return { total, avg: Number(avg.toFixed(1)), hard, soft }
   }, [userCompetencias])
 
   const displayed = useMemo(() => {
     const q = queryTable.trim().toLowerCase()
     let items = userCompetencias.filter((uc) => uc.competencia?.nome.toLowerCase().includes(q))
-    if (filterType !== 'ALL') items = items.filter((uc) => uc.competencia?.tipo === filterType)
+    if (filterType !== 'ALL') items = items.filter((uc) => (filterType === 'HARD' ? normalizeTipo(uc.competencia?.tipo) === 0 : normalizeTipo(uc.competencia?.tipo) === 1))
     if (sortKey === 'nivel-desc') items = items.slice().sort((a, b) => b.proeficiencia - a.proeficiencia)
     if (sortKey === 'nivel-asc') items = items.slice().sort((a, b) => a.proeficiencia - b.proeficiencia)
     if (sortKey === 'nome-asc') items = items.slice().sort((a, b) => (a.competencia?.nome || '').localeCompare(b.competencia?.nome || ''))
@@ -68,11 +75,21 @@ export function Competencias() {
   async function loadData() {
     if (!user?.id) return
     const [allRes, mineRes] = await Promise.all([
-      api.get<Competencia[]>('/competencias'),
-      api.get<UserCompetenciaItem[]>(`/usuario/competencias?id=${encodeURIComponent(user.id)}`),
+      api.get('/competencias'),
+      api.get(`/colaboradores/${encodeURIComponent(user.id)}/competencias`),
     ])
-    setAllCompetencias(allRes.data)
-    setUserCompetencias(mineRes.data)
+    const allList = Array.isArray(allRes.data) ? allRes.data : []
+    const normalizedAll = allList.map((c: any) => ({
+      ...c,
+      tipo: normalizeTipo(c?.tipo),
+    })) as Competencia[]
+    const mineList = Array.isArray(mineRes.data) ? mineRes.data : []
+    const normalizedMine = mineList.map((uc: any) => ({
+      ...uc,
+      competencia: uc?.competencia ? { ...uc.competencia, tipo: normalizeTipo(uc.competencia.tipo) } : uc?.competencia,
+    })) as UserCompetenciaItem[]
+    setAllCompetencias(normalizedAll)
+    setUserCompetencias(normalizedMine)
   }
 
   useEffect(() => {
@@ -87,11 +104,10 @@ export function Competencias() {
       let comp = selected
       if (!comp) {
         // cria se não existe
-        const create = await api.post<Competencia>('/competencias', { nome: query.trim(), tipo: newType })
+        const create = await api.post<Competencia>('/competencias', { nome: query.trim(), tipo: newType === 0 ? 'HARD' : 'SOFT' })
         comp = create.data
       }
-      await api.patch('/usuario/competencias', {
-        id: user.id,
+      await api.patch(`/colaboradores/${encodeURIComponent(user.id)}/competencias`, {
         competencias: [{ id_competencia: comp!.id_competencia, proeficiencia: newLevel }],
       })
       setQuery('')
@@ -195,8 +211,8 @@ export function Competencias() {
                   <div className="space-y-2">
                     <Label>Tipo</Label>
                     <div className="flex items-center gap-2">
-                      <Button variant={newType === 'HARD' ? 'default' : 'outline'} onClick={() => setNewType('HARD')}>HARD</Button>
-                      <Button variant={newType === 'SOFT' ? 'default' : 'outline'} onClick={() => setNewType('SOFT')}>SOFT</Button>
+                      <Button variant={newType === 0 ? 'default' : 'outline'} onClick={() => setNewType(0)}>HARD</Button>
+                      <Button variant={newType === 1 ? 'default' : 'outline'} onClick={() => setNewType(1)}>SOFT</Button>
                     </div>
                   </div>
                 )}
@@ -262,7 +278,7 @@ export function Competencias() {
                 {displayed.map((uc) => {
                   const pct = Math.min(100, Math.max(0, (uc.proeficiencia / 5) * 100))
                   const color = uc.proeficiencia >= 5 ? 'bg-emerald-500' : uc.proeficiencia >= 4 ? 'bg-green-500' : uc.proeficiencia >= 3 ? 'bg-blue-500' : uc.proeficiencia >= 2 ? 'bg-amber-500' : 'bg-red-500'
-                  const typeBadge = uc.competencia?.tipo === 'HARD'
+                  const typeBadge = uc.competencia?.tipo === 0
                     ? 'bg-blue-100 text-blue-700 border-blue-200'
                     : 'bg-violet-100 text-violet-700 border-violet-200'
                   return (
@@ -272,7 +288,7 @@ export function Competencias() {
                       </td>
                       <td className="py-3 pr-4">
                         <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${typeBadge}`}>
-                          {uc.competencia?.tipo}
+                          {normalizeTipo(uc.competencia?.tipo) === 0 ? 'HARD' : 'SOFT'}
                         </span>
                       </td>
                       <td className="py-3 pr-4 align-middle">
@@ -332,7 +348,7 @@ export function Competencias() {
                 if (!user?.id || !editItem) return
                 setLoading(true)
                 try {
-                  await api.delete('/usuario/competencias', { data: { id: user.id, id_item: editItem.id }})
+                  await api.delete(`/colaboradores/${encodeURIComponent(user.id)}/competencias`, { data: { id_item: editItem.id } })
                   await loadData()
                   toast.success('Competência removida')
                   setEditOpen(false)
@@ -349,8 +365,7 @@ export function Competencias() {
                 if (!user?.id || !editItem) return
                 setLoading(true)
                 try {
-                  await api.patch('/usuario/competencias', {
-                    id: user.id,
+                  await api.patch(`/colaboradores/${encodeURIComponent(user.id)}/competencias`, {
                     competencias: [{ id: editItem.id, id_competencia: editItem.id_competencia, proeficiencia: editLevel }],
                   })
                   await loadData()
