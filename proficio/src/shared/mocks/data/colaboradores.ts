@@ -5,7 +5,7 @@ export const setores: Setor[] = [
 ]
 
 export const cargos: Cargo[] = [
-  { id_cargo: 1, nome_cargo: 'Desenvolvedor', id_setor: 1, setor: setores[0] },
+  { id_cargo: 1, nome_cargo: 'Desenvolvedor Banckend Junior', id_setor: 1, setor: setores[0] },
   { id_cargo: 2, nome_cargo: 'Gestor de Projetos', id_setor: 1, setor: setores[0] },
   { id_cargo: 3, nome_cargo: 'Diretor de Tecnologia', id_setor: 1, setor: setores[0] },
 ]
