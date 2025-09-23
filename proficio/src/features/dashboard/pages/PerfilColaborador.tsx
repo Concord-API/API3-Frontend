@@ -42,16 +42,17 @@ export function PerfilColaborador() {
   useEffect(() => {
     async function fetchProfile() {
       if (!user?.id) return
-      const { data } = await api.get<Colaborador>(`/perfil?id=${encodeURIComponent(user.id)}`)
+      const { data } = await api.get<Colaborador>(`/colaboradores/${encodeURIComponent(user.id)}/perfil`)
       setProfileEmail(`${user.email ?? ''}`)
       setProfileName([data.nome, data.sobrenome].filter(Boolean).join(' '))
-      setProfileCargo(data.cargo?.nome_cargo ?? '—')
-      setProfileLocation(data.equipe?.setor?.nome_setor ?? '')
-      setProfilePhoto(data.foto_url ?? undefined)
-      setProfileCover(data.cover_url ?? undefined)
+
+      setProfileCargo((data as any).cargo?.nome_cargo ?? (data as any).cargo?.nome ?? '—')
+      setProfileLocation((data as any).equipe?.setor?.nome_setor ?? (data as any).equipe?.setor?.nome ?? '')
+      setProfilePhoto(data.avatar ?? undefined)
+
       
-      if (data.updated_at) {
-        setLastUpdated(new Date(data.updated_at))
+      if ((data as any).atualizado_em) {
+        setLastUpdated(new Date((data as any).atualizado_em))
       }
       if (data.created_at) {
         setCreatedAtDate(new Date(data.created_at))
@@ -155,16 +156,33 @@ export function PerfilColaborador() {
               <AvatarImage src={photoPreview ?? profilePhoto ?? undefined} alt="Colaborador" />
               <AvatarFallback>CL</AvatarFallback>
             </Avatar>
-             {editMode && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => { setAvatarSrc(photoPreview ?? profilePhoto ?? null); setAvatarCropOpen(true) }}
-                  className="absolute -bottom-1 -right-1 grid place-items-center rounded-full border bg-background p-2 shadow-sm hover:bg-accent"
-                >
-                  <Camera className="size-4 text-muted-foreground" />
-                </button>
-              </>
+            {editMode && (
+              <label className="absolute inset-0 grid place-items-center bg-black/40 rounded-full cursor-pointer group">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    const url = URL.createObjectURL(file)
+                    setPhotoPreview(url)
+                    const reader = new FileReader()
+                    reader.onload = async () => {
+                      const base64 = String(reader.result)
+                      setPhotoPreview(base64)
+                      await api.patch(`/colaboradores/${user!.id}/perfil`, { avatar: base64 })
+                      setProfilePhoto(base64)
+                      setLastUpdated(new Date())
+                      toast.success('Foto de perfil atualizada')
+                    }
+                    reader.readAsDataURL(file)
+                  }}
+                />
+                <span className="flex items-center gap-1 text-xs text-white opacity-100 group-hover:opacity-100">
+                  <Camera className="size-4" /> Editar
+                </span>
+              </label>
             )}
           </div>
           <div className="min-w-0 flex-1">
@@ -319,11 +337,11 @@ export function PerfilColaborador() {
                             return comp ? { id_competencia: comp.id_competencia, ordem: idx + 1 } : null
                           }).filter(Boolean) as { id?: number; id_competencia?: number; ordem: number }[]
                           try {
-                            await api.patch(`/perfil`, { id: user!.id, competencias: next })
+                            await api.patch(`/colaboradores/${user!.id}/perfil`, { competencias: next })
                             // Reflete imediatamente na UI, inclusive quando estava vazio
                             setSkills(nextNames)
                             // Recarrega do servidor mock para obter ids atualizados
-                            const { data } = await api.get<Colaborador>(`/perfil?id=${encodeURIComponent(user!.id)}`)
+                            const { data } = await api.get<Colaborador>(`/colaboradores/${encodeURIComponent(user!.id)}/perfil`)
                             const atualizadas = (data.competencias ?? [])
                               .filter((cc) => cc.ordem != null && (cc.ordem as number) > 0)
                               .slice()
@@ -331,7 +349,7 @@ export function PerfilColaborador() {
                               .map((cc) => ({ id: cc.id, nome: cc.competencia?.nome ?? '', ordem: (cc.ordem as number) }))
                               .filter((i) => Boolean(i.nome))
                             setSkillItems(atualizadas.slice(0, 4))
-                            if (data.updated_at) setLastUpdated(new Date(data.updated_at))
+                            if ((data as any).atualizado_em) setLastUpdated(new Date((data as any).atualizado_em))
                             toast.success('Competências destacadas atualizadas')
                           } finally {
                             setDrawerOpen(false)

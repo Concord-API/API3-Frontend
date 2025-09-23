@@ -1,4 +1,4 @@
-export type CompetenciaTipo = "SOFT" | "HARD";
+export type CompetenciaTipo = 0 | 1; // 0 = HARD, 1 = SOFT
 
 export interface Setor {
     id_setor: number;
@@ -29,10 +29,10 @@ export interface Colaborador {
     nome: string;
     sobrenome: string;
     status_col: boolean;
-    foto_url?: string | null;
-    cover_url?: string | null;
-    created_at?: string | null;
-    updated_at?: string | null;
+    avatar?: string | null; // base64
+    capa?: string | null;   // base64
+    criado_em?: string | null;
+    atualizado_em?: string | null;
     id_equipe: number;
     id_cargo: number;
     equipe?: Equipe;
@@ -43,7 +43,7 @@ export interface Colaborador {
 export interface Competencia {
     id_competencia: number;
     nome: string;
-    tipo: CompetenciaTipo;
+    tipo: CompetenciaTipo; // 0 (HARD) | 1 (SOFT)
 }
 
 export interface ColaboradorCompetencia {
