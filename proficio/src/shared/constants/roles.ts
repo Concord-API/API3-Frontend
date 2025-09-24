@@ -1,13 +1,13 @@
 export const ROLES = {
-  COLABORADOR: 'COLABORADOR',
-  GESTOR: 'GESTOR',
-  DIRETOR: 'DIRETOR',
-} as const
+  COLABORADOR: 'ROLE_COLABORADOR',
+  GESTOR: 'ROLE_GESTOR',
+  DIRETOR: 'ROLE_DIRETOR',
+} as const;
 
 export type UserRole = typeof ROLES[keyof typeof ROLES]
 
 export const ROLE_LABEL: Record<UserRole, string> = {
-  COLABORADOR: 'Colaborador',
-  GESTOR: 'Gestor',
-  DIRETOR: 'Diretor',
-}
+  ROLE_COLABORADOR: 'Colaborador',
+  ROLE_GESTOR: 'Gestor',
+  ROLE_DIRETOR: 'Diretor',
+};

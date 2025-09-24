@@ -6,7 +6,7 @@ export type LoginResponse = { token: string; user: { id: string; name: string; e
 
 export const authService = {
   async login(payload: LoginPayload): Promise<LoginResponse> {
-    const response = await api.post<LoginResponse>('/login', { email: payload.email })
+    const response = await api.post<LoginResponse>('/login', { email: payload.email, password: payload.password })
     return response.data
   },
 }

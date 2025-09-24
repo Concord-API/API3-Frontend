@@ -1,28 +1,30 @@
 import { http, HttpResponse } from 'msw'
-import { authUsersMock } from './data/authUsers'
-import { colaboradores, colaboradorCompetencias, emailToColaboradorId, competencias } from './data/colaboradores'
+import { colaboradores, colaboradorCompetencias, competencias } from './data/colaboradores'
 
 export const handlers = [
   http.post('/api/login', async ({ request }) => {
-    const body = await request.json().catch(() => ({} as any)) as { email?: string }
+    const body = await request.json().catch(() => ({} as any)) as { email?: string; password?: string }
     const email = body?.email?.toLowerCase?.()
-    const found = authUsersMock.find((u) => u.email.toLowerCase() === email)
-    if (!found) {
+    const password = body?.password ?? ''
+    const colab = colaboradores.find((c) => c.email.toLowerCase() === email)
+    if (!colab || (typeof colab.senha === 'string' && colab.senha !== password)) {
       return HttpResponse.json({ message: 'Usuário não autorizado' }, { status: 401 })
     }
-    return HttpResponse.json({ token: `fake-token-${Date.now()}`, user: found }, { status: 200 })
+    const user = {
+      id: String(colab.id_colaborador),
+      name: `${colab.nome} ${colab.sobrenome}`.trim(),
+      email: colab.email,
+      role: colab.role,
+    }
+    return HttpResponse.json({ token: `fake-token-${Date.now()}`, user }, { status: 200 })
   }),
 
   http.get('/api/perfil', async ({ request }) => {
     const url = new URL(request.url)
     const authUserId = url.searchParams.get('id') ?? ''
-    const authUser = authUsersMock.find((u) => u.id === authUserId)
-    if (!authUser) {
+    const colabId = Number(authUserId)
+    if (!Number.isFinite(colabId)) {
       return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
-    }
-    const colabId = emailToColaboradorId[authUser.email.toLowerCase()] ?? null
-    if (!colabId) {
-      return HttpResponse.json({ message: 'Colaborador não encontrado' }, { status: 404 })
     }
     const colab = colaboradores.find(c => c.id_colaborador === colabId)
     if (!colab) {
@@ -43,30 +45,34 @@ export const handlers = [
   }),
 
   http.patch('/api/perfil', async ({ request }) => {
-    const body = await request.json().catch(() => ({} as any)) as { id?: string; competencias?: { id?: number; id_competencia?: number; ordem: number }[], foto_url?: string, cover_url?: string }
+    const body = await request.json().catch(() => ({} as any)) as { id?: string; competencias?: { id?: number; id_competencia?: number; ordem: number }[], avatar?: string | Blob, capa?: string | Blob }
     const authUserId = body?.id ?? ''
-    const authUser = authUsersMock.find((u) => u.id === authUserId)
-    if (!authUser) {
+    const colabId = Number(authUserId)
+    if (!Number.isFinite(colabId)) {
       return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
     }
-    const colabId = emailToColaboradorId[authUser.email.toLowerCase()] ?? null
-    if (!colabId) {
-      return HttpResponse.json({ message: 'Colaborador não encontrado' }, { status: 404 })
-    }
-    // Atualização de foto
-    if (typeof body.foto_url === 'string') {
+
+    if (typeof body.avatar === 'string' || body.avatar instanceof Blob) {
       const colab = colaboradores.find(c => c.id_colaborador === colabId)
       if (colab) {
-        colab.foto_url = body.foto_url
-        colab.updated_at = new Date().toISOString()
+        if (body.avatar instanceof Blob) {
+          colab.avatar = await body.avatar.text()
+        } else {
+          colab.avatar = body.avatar
+        }
+        colab.atualizado_em = new Date().toISOString()
       }
     }
-    // Atualização de capa
-    if (typeof body.cover_url === 'string') {
+    // Atualização de capa (capa string ou Blob)
+    if (typeof body.capa === 'string' || body.capa instanceof Blob) {
       const colab = colaboradores.find(c => c.id_colaborador === colabId)
       if (colab) {
-        colab.cover_url = body.cover_url
-        colab.updated_at = new Date().toISOString()
+        if (body.capa instanceof Blob) {
+          colab.capa = await body.capa.text()
+        } else {
+          colab.capa = body.capa
+        }
+        colab.atualizado_em = new Date().toISOString()
       }
     }
 
@@ -108,19 +114,17 @@ export const handlers = [
       const item = colaboradorCompetencias.find(cc => cc.id === pair.id && cc.id_colaborador === colabId)
       if (item) item.ordem = pair.ordem
     }
-    // seta updated_at ao salvar competências
+    // seta atualizado_em ao salvar competências
     const colab = colaboradores.find(c => c.id_colaborador === colabId)
-    if (colab) colab.updated_at = new Date().toISOString()
+    if (colab) colab.atualizado_em = new Date().toISOString()
     return HttpResponse.json({ ok: true }, { status: 200 })
   }),
 
   // Rotas baseadas em colaboradores (compatíveis com as telas atuais)
   http.get('/api/colaboradores/:id/perfil', async ({ params }) => {
     const authUserId = String(params.id ?? '')
-    const authUser = authUsersMock.find((u) => u.id === authUserId)
-    if (!authUser) return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
-    const colabId = emailToColaboradorId[authUser.email.toLowerCase()] ?? null
-    if (!colabId) return HttpResponse.json({ message: 'Colaborador não encontrado' }, { status: 404 })
+    const colabId = Number(authUserId)
+    if (!Number.isFinite(colabId)) return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
     const colab = colaboradores.find(c => c.id_colaborador === colabId)
     if (!colab) return HttpResponse.json({ message: 'Colaborador não encontrado' }, { status: 404 })
     const comps = colaboradorCompetencias
@@ -138,20 +142,33 @@ export const handlers = [
   }),
 
   http.patch('/api/colaboradores/:id/perfil', async ({ params, request }) => {
-    const body = await request.json().catch(() => ({} as any)) as { competencias?: { id?: number; id_competencia?: number; ordem: number }[], avatar?: string; foto_url?: string }
+    const body = await request.json().catch(() => ({} as any)) as { competencias?: { id?: number; id_competencia?: number; ordem: number }[], avatar?: string | Blob, capa?: string | Blob }
     const authUserId = String(params.id ?? '')
-    const authUser = authUsersMock.find((u) => u.id === authUserId)
-    if (!authUser) return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
-    const colabId = emailToColaboradorId[authUser.email.toLowerCase()] ?? null
-    if (!colabId) return HttpResponse.json({ message: 'Colaborador não encontrado' }, { status: 404 })
+    const colabId = Number(authUserId)
+    if (!Number.isFinite(colabId)) return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
 
-    // Atualização de foto: aceita avatar (base64) ou foto_url
-    if (typeof body.avatar === 'string' || typeof body.foto_url === 'string') {
+    // Atualização de foto: aceita avatar (string/base64) ou Blob
+    if (typeof body.avatar === 'string' || body.avatar instanceof Blob) {
       const colab = colaboradores.find(c => c.id_colaborador === colabId)
       if (colab) {
-        // Mantemos campo foto_url no mock
-        colab.foto_url = (body.avatar ?? body.foto_url) as string
-        colab.updated_at = new Date().toISOString()
+        if (body.avatar instanceof Blob) {
+          colab.avatar = await body.avatar.text()
+        } else {
+          colab.avatar = body.avatar
+        }
+        colab.atualizado_em = new Date().toISOString()
+      }
+    }
+    // Atualização de capa: aceita capa (string/base64) ou Blob
+    if (typeof body.capa === 'string' || body.capa instanceof Blob) {
+      const colab = colaboradores.find(c => c.id_colaborador === colabId)
+      if (colab) {
+        if (body.capa instanceof Blob) {
+          colab.capa = await body.capa.text()
+        } else {
+          colab.capa = body.capa
+        }
+        colab.atualizado_em = new Date().toISOString()
       }
     }
 
@@ -192,7 +209,7 @@ export const handlers = [
       if (item) item.ordem = pair.ordem
     }
     const colab = colaboradores.find(c => c.id_colaborador === colabId)
-    if (colab) colab.updated_at = new Date().toISOString()
+    if (colab) colab.atualizado_em = new Date().toISOString()
     return HttpResponse.json({ ok: true }, { status: 200 })
   }),
   // Lista de competências
@@ -204,10 +221,8 @@ export const handlers = [
   http.get('/api/usuario/competencias', async ({ request }) => {
     const url = new URL(request.url)
     const authUserId = url.searchParams.get('id') ?? ''
-    const authUser = authUsersMock.find((u) => u.id === authUserId)
-    if (!authUser) return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
-    const colabId = emailToColaboradorId[authUser.email.toLowerCase()]
-    if (!colabId) return HttpResponse.json({ message: 'Colaborador não encontrado' }, { status: 404 })
+    const colabId = Number(authUserId)
+    if (!Number.isFinite(colabId)) return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
     const items = colaboradorCompetencias
       .filter(cc => cc.id_colaborador === colabId)
       .map(cc => ({ ...cc }))
@@ -217,10 +232,8 @@ export const handlers = [
   // Competências do colaborador (listar)
   http.get('/api/colaboradores/:id/competencias', async ({ params }) => {
     const authUserId = String(params.id ?? '')
-    const authUser = authUsersMock.find((u) => u.id === authUserId)
-    if (!authUser) return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
-    const colabId = emailToColaboradorId[authUser.email.toLowerCase()]
-    if (!colabId) return HttpResponse.json({ message: 'Colaborador não encontrado' }, { status: 404 })
+    const colabId = Number(authUserId)
+    if (!Number.isFinite(colabId)) return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
     const items = colaboradorCompetencias
       .filter(cc => cc.id_colaborador === colabId)
       .map(cc => ({ ...cc }))
@@ -230,10 +243,8 @@ export const handlers = [
   // Competências do usuário (atualizar/adicionar)
   http.patch('/api/usuario/competencias', async ({ request }) => {
     const body = await request.json().catch(() => ({} as any)) as { id?: string; competencias: { id?: number; id_competencia?: number; proeficiencia: number }[] }
-    const authUser = authUsersMock.find((u) => u.id === body.id)
-    if (!authUser) return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
-    const colabId = emailToColaboradorId[authUser.email.toLowerCase()]
-    if (!colabId) return HttpResponse.json({ message: 'Colaborador não encontrado' }, { status: 404 })
+    const colabId = Number(body.id)
+    if (!Number.isFinite(colabId)) return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
 
     for (const u of body.competencias ?? []) {
       if (u.id) {
@@ -266,10 +277,8 @@ export const handlers = [
   http.patch('/api/colaboradores/:id/competencias', async ({ params, request }) => {
     const body = await request.json().catch(() => ({} as any)) as { competencias: { id?: number; id_competencia?: number; proeficiencia: number }[] }
     const authUserId = String(params.id ?? '')
-    const authUser = authUsersMock.find((u) => u.id === authUserId)
-    if (!authUser) return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
-    const colabId = emailToColaboradorId[authUser.email.toLowerCase()]
-    if (!colabId) return HttpResponse.json({ message: 'Colaborador não encontrado' }, { status: 404 })
+    const colabId = Number(authUserId)
+    if (!Number.isFinite(colabId)) return HttpResponse.json({ message: 'Colaborador não encontrado' }, { status: 404 })
 
     for (const u of body.competencias ?? []) {
       if (u.id) {
@@ -301,10 +310,8 @@ export const handlers = [
   // Competências do usuário (excluir)
   http.delete('/api/usuario/competencias', async ({ request }) => {
     const body = await request.json().catch(() => ({} as any)) as { id?: string; id_item?: number }
-    const authUser = authUsersMock.find((u) => u.id === body.id)
-    if (!authUser) return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
-    const colabId = emailToColaboradorId[authUser.email.toLowerCase()]
-    if (!colabId) return HttpResponse.json({ message: 'Colaborador não encontrado' }, { status: 404 })
+    const colabId = Number(body.id)
+    if (!Number.isFinite(colabId)) return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
     const idx = colaboradorCompetencias.findIndex(cc => cc.id === (body.id_item as number) && cc.id_colaborador === colabId)
     if (idx >= 0) {
       colaboradorCompetencias.splice(idx, 1)
@@ -316,10 +323,8 @@ export const handlers = [
   http.delete('/api/colaboradores/:id/competencias', async ({ params, request }) => {
     const body = await request.json().catch(() => ({} as any)) as { id_item?: number }
     const authUserId = String(params.id ?? '')
-    const authUser = authUsersMock.find((u) => u.id === authUserId)
-    if (!authUser) return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
-    const colabId = emailToColaboradorId[authUser.email.toLowerCase()]
-    if (!colabId) return HttpResponse.json({ message: 'Colaborador não encontrado' }, { status: 404 })
+    const colabId = Number(authUserId)
+    if (!Number.isFinite(colabId)) return HttpResponse.json({ message: 'Usuário não encontrado' }, { status: 404 })
     const idx = colaboradorCompetencias.findIndex(cc => cc.id === (body.id_item as number) && cc.id_colaborador === colabId)
     if (idx >= 0) colaboradorCompetencias.splice(idx, 1)
     return HttpResponse.json({ ok: true }, { status: 200 })
@@ -327,13 +332,13 @@ export const handlers = [
 
   // Criar nova competência global
   http.post('/api/competencias', async ({ request }) => {
-    const body = await request.json().catch(() => ({} as any)) as { nome?: string; tipo?: 'HARD' | 'SOFT' }
+    const body = await request.json().catch(() => ({} as any)) as { nome?: string; tipo?: 0 | 1 }
     const nome = (body.nome ?? '').trim()
     if (!nome) return HttpResponse.json({ message: 'Nome é obrigatório' }, { status: 400 })
     const exists = competencias.find(c => c.nome.toLowerCase() === nome.toLowerCase())
     if (exists) return HttpResponse.json(exists, { status: 200 })
     const nextId = Math.max(0, ...competencias.map(c => c.id_competencia)) + 1
-    const novo = { id_competencia: nextId, nome, tipo: body.tipo ?? 'HARD' as const }
+    const novo = { id_competencia: nextId, nome, tipo: (body.tipo ?? 0) as 0 | 1 }
     competencias.push(novo)
     return HttpResponse.json(novo, { status: 201 })
   }),

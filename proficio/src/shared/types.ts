@@ -1,9 +1,12 @@
+import type { UserRole } from "./constants/roles";
+
 export type CompetenciaTipo = 0 | 1; // 0 = HARD, 1 = SOFT
 
 export interface Setor {
     id_setor: number;
     nome_setor: string;
     desc_setor?: string | null;
+    status: boolean;
 }
 
 export interface Cargo {
@@ -12,6 +15,7 @@ export interface Cargo {
     desc_cargo?: string | null;
     id_setor: number;
     setor?: Setor;
+    status: boolean;
 }
 
 export interface Equipe {
@@ -20,6 +24,7 @@ export interface Equipe {
     gerente?: string | null;
     id_setor: number;
     setor?: Setor;
+    status: boolean;
 }
 
 export interface Colaborador {
@@ -28,7 +33,10 @@ export interface Colaborador {
     data_nasci?: string | null;
     nome: string;
     sobrenome: string;
-    status_col: boolean;
+    email: string;
+    senha: string;
+    status: boolean;
+    role: UserRole;
     avatar?: string | null; // base64
     capa?: string | null;   // base64
     criado_em?: string | null;

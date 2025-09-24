@@ -1,17 +1,18 @@
+import { ROLES } from '@/shared/constants/roles'
 import type { Setor, Cargo, Equipe, Colaborador, Competencia, ColaboradorCompetencia } from '@/shared/types'
 
 export const setores: Setor[] = [
-  { id_setor: 1, nome_setor: 'Tecnologia', desc_setor: 'TI' },
+  { id_setor: 1, nome_setor: 'Tecnologia', desc_setor: 'TI', status: true },
 ]
 
 export const cargos: Cargo[] = [
-  { id_cargo: 1, nome_cargo: 'Desenvolvedor Banckend Junior', id_setor: 1, setor: setores[0] },
-  { id_cargo: 2, nome_cargo: 'Gestor de Projetos', id_setor: 1, setor: setores[0] },
-  { id_cargo: 3, nome_cargo: 'Diretor de Tecnologia', id_setor: 1, setor: setores[0] },
+  { id_cargo: 1, nome_cargo: 'Desenvolvedor Banckend Junior', status: true, id_setor: 1, setor: setores[0] },
+  { id_cargo: 2, nome_cargo: 'Gestor de Projetos', id_setor: 1,status: true, setor: setores[0] },
+  { id_cargo: 3, nome_cargo: 'Diretor de Tecnologia', id_setor: 1,status: true, setor: setores[0] },
 ]
 
 export const equipes: Equipe[] = [
-  { id_equipe: 1, nome_equipe: 'Plataforma', id_setor: 1, setor: setores[0] },
+  { id_equipe: 1, nome_equipe: 'Plataforma', id_setor: 1, status: true, setor: setores[0] },
 ]
 
 export const competencias: Competencia[] = [
@@ -28,9 +29,9 @@ export const competencias: Competencia[] = [
 ]
 
 export const colaboradores: Colaborador[] = [
-  { id_colaborador: 101, nome: 'Colaborador', sobrenome: 'Exemplo', status_col: true, avatar: null, atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), id_equipe: 1, id_cargo: 1, equipe: equipes[0], cargo: cargos[0] },
-  { id_colaborador: 102, nome: 'Gestor', sobrenome: 'Exemplo', status_col: true, avatar: null, atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), id_equipe: 1, id_cargo: 2, equipe: equipes[0], cargo: cargos[1] },
-  { id_colaborador: 103, nome: 'Diretor', sobrenome: 'Exemplo', status_col: true, avatar: null, atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), criado_em: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), id_equipe: 1, id_cargo: 3, equipe: equipes[0], cargo: cargos[2] },
+  { id_colaborador: 101, nome: 'Tainara', sobrenome: 'Nogueira', email: 'colaborador@example.com', senha: '12345678', status: true, role: ROLES.COLABORADOR, avatar: null, atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), id_equipe: 1, id_cargo: 1, equipe: equipes[0], cargo: cargos[0] },
+  { id_colaborador: 102, nome: 'Adler', sobrenome: 'Alves', email: 'gestor@example.com', senha: '12345678', status: true, role: ROLES.GESTOR, avatar: null, atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), id_equipe: 1, id_cargo: 2, equipe: equipes[0], cargo: cargos[1] },
+  { id_colaborador: 103, nome: 'Richard', sobrenome: 'Coordeiro', email: 'diretor@example.com', senha: '12345678', status: true, role: ROLES.DIRETOR, avatar: null, atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), id_equipe: 1, id_cargo: 3, equipe: equipes[0], cargo: cargos[2] },
 ]
 
 export const colaboradorCompetencias: ColaboradorCompetencia[] = [

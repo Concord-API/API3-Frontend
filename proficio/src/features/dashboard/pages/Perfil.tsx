@@ -12,7 +12,7 @@ import { SquarePen, GripVertical, X, Camera } from 'lucide-react'
 import { toast } from 'sonner'
 import { AvatarEditorModal } from '@/features/dashboard/components/AvatarEditorModal'
 
-export function PerfilColaborador() {
+export function Perfil() {
   const { user } = useAuth()
   const [editMode] = useState(true)
   const [skills, setSkills] = useState<string[]>([])
@@ -48,7 +48,20 @@ export function PerfilColaborador() {
 
       setProfileCargo((data as any).cargo?.nome_cargo ?? (data as any).cargo?.nome ?? '—')
       setProfileLocation((data as any).equipe?.setor?.nome_setor ?? (data as any).equipe?.setor?.nome ?? '')
-      setProfilePhoto(data.avatar ?? undefined)
+
+      const avatarValue = (data as any).avatar as unknown
+      if (avatarValue instanceof Blob) {
+        setProfilePhoto(URL.createObjectURL(avatarValue))
+      } else {
+        setProfilePhoto((avatarValue as string | null) ?? undefined)
+      }
+
+      const capaValue = (data as any).capa as unknown
+      if (capaValue instanceof Blob) {
+        setProfileCover(URL.createObjectURL(capaValue))
+      } else {
+        setProfileCover((capaValue as string | null) ?? undefined)
+      }
 
       
       if ((data as any).atualizado_em) {
@@ -137,7 +150,7 @@ export function PerfilColaborador() {
                 if (!f) return
                 const url = URL.createObjectURL(f)
                 setProfileCover(url)
-                await api.patch('/perfil', { id: user!.id, cover_url: url })
+                await api.patch('/perfil', { id: user!.id, capa: url })
                 setLastUpdated(new Date())
                 toast.success('Capa atualizada')
               }}
@@ -221,7 +234,7 @@ export function PerfilColaborador() {
         onSave={async (blob) => {
           const url = URL.createObjectURL(blob)
           setPhotoPreview(url)
-          await api.patch('/perfil', { id: user!.id, foto_url: url })
+          await api.patch('/perfil', { id: user!.id, avatar: url })
           setProfilePhoto(url)
           setLastUpdated(new Date())
           toast.success('Foto de perfil atualizada')
