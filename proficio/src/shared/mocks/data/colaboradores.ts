@@ -29,9 +29,9 @@ export const competencias: Competencia[] = [
 ]
 
 export const colaboradores: Colaborador[] = [
-  { id_colaborador: 101, nome: 'Tainara', sobrenome: 'Nogueira', email: 'colaborador@example.com', senha: '12345678', status: true, role: ROLES.COLABORADOR, avatar: null, atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), id_equipe: 1, id_cargo: 1, equipe: equipes[0], cargo: cargos[0] },
-  { id_colaborador: 102, nome: 'Adler', sobrenome: 'Alves', email: 'gestor@example.com', senha: '12345678', status: true, role: ROLES.GESTOR, avatar: null, atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), id_equipe: 1, id_cargo: 2, equipe: equipes[0], cargo: cargos[1] },
-  { id_colaborador: 103, nome: 'Richard', sobrenome: 'Coordeiro', email: 'diretor@example.com', senha: '12345678', status: true, role: ROLES.DIRETOR, avatar: null, atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), id_equipe: 1, id_cargo: 3, equipe: equipes[0], cargo: cargos[2] },
+  { id_colaborador: 101, nome: 'Tainara', sobrenome: 'Nogueira', email: 'colaborador@example.com', senha: '12345678', status: true, role: ROLES.COLABORADOR, avatar: null, criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 400).toISOString(), atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), id_equipe: 1, id_cargo: 1, equipe: equipes[0], cargo: cargos[0] },
+  { id_colaborador: 102, nome: 'Adler', sobrenome: 'Alves', email: 'gestor@example.com', senha: '12345678', status: true, role: ROLES.GESTOR, avatar: null, criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 800).toISOString(), atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), id_equipe: 1, id_cargo: 2, equipe: equipes[0], cargo: cargos[1] },
+  { id_colaborador: 103, nome: 'Richard', sobrenome: 'Coordeiro', email: 'diretor@example.com', senha: '12345678', status: true, role: ROLES.DIRETOR, avatar: null, criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1200).toISOString(), atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), id_equipe: 1, id_cargo: 3, equipe: equipes[0], cargo: cargos[2] },
 ]
 
 export const colaboradorCompetencias: ColaboradorCompetencia[] = [

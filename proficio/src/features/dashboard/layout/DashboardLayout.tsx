@@ -30,6 +30,8 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { Home } from 'lucide-react'
 import { getRoutesForRole } from '@/features/dashboard/routes/dashboardRoutes'
 import { AnimatedLogo } from '@/shared/components/AnimatedLogo'
+import { ROLES } from '@/shared/constants/roles'
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/shared/components/ui/breadcrumb'
 import logoUrl from '@/assets/logo.svg'
 
 export function DashboardLayout() {
@@ -74,7 +76,7 @@ export function DashboardLayout() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {getRoutesForRole(user?.role ?? 'COLABORADOR').map((r) => {
+                {getRoutesForRole(user?.role ?? ROLES.COLABORADOR).map((r) => {
                   const Icon = r.icon ?? Home
                   return (
                     <SidebarMenuItem key={r.path || 'root'}>
@@ -133,14 +135,35 @@ export function DashboardLayout() {
 
       <SidebarInset>
         <header
-          className="flex h-[--header-height] shrink-0 items-center gap-2 border-b px-4 lg:px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12"
+          className="flex h-[--header-height] shrink-0 items-center gap-2 border-b px-4 lg:px-6"
         >
           <SidebarTrigger />
           <Separator orientation="vertical" className="mx-1 h-6" />
-          <div className="text-sm font-medium">Proficio</div>
-          <div className="ml-auto flex items-center gap-2">
-            <div className="hidden md:block text-sm text-muted-foreground">{user?.email}</div>
-            <Button variant="outline" onClick={handleLogout}>Sair</Button>
+          <div className="text-sm font-medium">
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <NavLink to="/dashboard">Dashboard</NavLink>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                {(() => {
+                  const role = user?.role ?? ROLES.COLABORADOR
+                  const currentPath = location.pathname.replace(/^\/dashboard\/?/, '')
+                  const currentKey = currentPath.split('/')[0] ?? ''
+                  const current = getRoutesForRole(role).find(r => r.path === currentKey)
+                  if (!currentKey || !current || current.path === '') return null
+                  return (
+                    <>
+                      <BreadcrumbSeparator />
+                      <BreadcrumbItem>
+                        <BreadcrumbPage>{current.label}</BreadcrumbPage>
+                      </BreadcrumbItem>
+                    </>
+                  )
+                })()}
+              </BreadcrumbList>
+            </Breadcrumb>
           </div>
         </header>
         <div className="flex flex-1 flex-col p-4 lg:p-6">
