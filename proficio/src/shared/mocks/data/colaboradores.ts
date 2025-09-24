@@ -1,17 +1,33 @@
+import { ROLES } from '@/shared/constants/roles'
 import type { Setor, Cargo, Equipe, Colaborador, Competencia, ColaboradorCompetencia } from '@/shared/types'
 
 export const setores: Setor[] = [
-  { id_setor: 1, nome_setor: 'Tecnologia', desc_setor: 'TI' },
+  { id_setor: 1, nome_setor: 'Tecnologia', desc_setor: 'TI', status: true },
+  { id_setor: 2, nome_setor: 'Financeiro', desc_setor: 'Gestão Financeira e Contábil', status: true },
+  { id_setor: 3, nome_setor: 'Recursos Humanos', desc_setor: 'Gestão de Pessoas e RH', status: true },
 ]
 
 export const cargos: Cargo[] = [
-  { id_cargo: 1, nome_cargo: 'Desenvolvedor Banckend Junior', id_setor: 1, setor: setores[0] },
-  { id_cargo: 2, nome_cargo: 'Gestor de Projetos', id_setor: 1, setor: setores[0] },
-  { id_cargo: 3, nome_cargo: 'Diretor de Tecnologia', id_setor: 1, setor: setores[0] },
+  // Tecnologia
+  { id_cargo: 1, nome_cargo: 'Desenvolvedor Banckend Junior', status: true, id_setor: 1, setor: setores[0] },
+  { id_cargo: 2, nome_cargo: 'Gestor de Projetos', id_setor: 1, status: true, setor: setores[0] },
+  { id_cargo: 3, nome_cargo: 'Diretor de Tecnologia', id_setor: 1, status: true, setor: setores[0] },
+
+  // Financeiro
+  { id_cargo: 4, nome_cargo: 'Analista Financeiro', id_setor: 2, status: true, setor: setores[1] },
+  { id_cargo: 5, nome_cargo: 'Gestor Financeiro', id_setor: 2, status: true, setor: setores[1] },
+  { id_cargo: 6, nome_cargo: 'Diretor Financeiro', id_setor: 2, status: true, setor: setores[1] },
+
+  // Recursos Humanos
+  { id_cargo: 7, nome_cargo: 'Analista de RH', id_setor: 3, status: true, setor: setores[2] },
+  { id_cargo: 8, nome_cargo: 'Gestor de RH', id_setor: 3, status: true, setor: setores[2] },
+  { id_cargo: 9, nome_cargo: 'Diretor de RH', id_setor: 3, status: true, setor: setores[2] },
 ]
 
 export const equipes: Equipe[] = [
-  { id_equipe: 1, nome_equipe: 'Plataforma', id_setor: 1, setor: setores[0] },
+  { id_equipe: 1, nome_equipe: 'Desenvolvimento', id_setor: 1, status: true, setor: setores[0] },
+  { id_equipe: 2, nome_equipe: 'Gestão Financeira', id_setor: 2, status: true, setor: setores[1] },
+  { id_equipe: 3, nome_equipe: 'Gestão de Pessoas', id_setor: 3, status: true, setor: setores[2] },
 ]
 
 export const competencias: Competencia[] = [
@@ -28,9 +44,19 @@ export const competencias: Competencia[] = [
 ]
 
 export const colaboradores: Colaborador[] = [
-  { id_colaborador: 101, nome: 'Colaborador', sobrenome: 'Exemplo', status_col: true, avatar: null, atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), id_equipe: 1, id_cargo: 1, equipe: equipes[0], cargo: cargos[0] },
-  { id_colaborador: 102, nome: 'Gestor', sobrenome: 'Exemplo', status_col: true, avatar: null, atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), id_equipe: 1, id_cargo: 2, equipe: equipes[0], cargo: cargos[1] },
-  { id_colaborador: 103, nome: 'Diretor', sobrenome: 'Exemplo', status_col: true, avatar: null, atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), criado_em: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), id_equipe: 1, id_cargo: 3, equipe: equipes[0], cargo: cargos[2] },
+  // Tecnologia
+  { id_colaborador: 101, nome: 'Tainara', sobrenome: 'Nogueira', email: 'colaborador@example.com', senha: '12345678', status: true, role: ROLES.COLABORADOR, avatar: null, criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 3).toISOString(), atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), id_equipe: 1, id_cargo: 1, equipe: equipes[0], cargo: cargos[0] },
+  { id_colaborador: 102, nome: 'Adler', sobrenome: 'Alves', email: 'gestor@example.com', senha: '12345678', status: true, role: ROLES.GESTOR, avatar: null, criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 9).toISOString(), atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), id_equipe: 1, id_cargo: 2, equipe: equipes[0], cargo: cargos[1] },
+  { id_colaborador: 103, nome: 'Richard', sobrenome: 'Coordeiro', email: 'diretor@example.com', senha: '12345678', status: true, role: ROLES.DIRETOR, avatar: null, criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 13).toISOString(), atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), id_equipe: 1, id_cargo: 3, equipe: equipes[0], cargo: cargos[2] },
+
+  // Financeiro
+  { id_colaborador: 104, nome: 'Mariana', sobrenome: 'Costa', email: 'analista.financeiro@example.com', senha: '12345678', status: true, role: ROLES.COLABORADOR, avatar: null, criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 2).toISOString(), atualizado_em: new Date().toISOString(), id_equipe: 2, id_cargo: 4, equipe: equipes[1], cargo: cargos[3] },
+  { id_colaborador: 105, nome: 'Lucas', sobrenome: 'Mendes', email: 'gestor.financeiro@example.com', senha: '12345678', status: true, role: ROLES.GESTOR, avatar: null, criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 9).toISOString(), atualizado_em: new Date().toISOString(), id_equipe: 2, id_cargo: 5, equipe: equipes[1], cargo: cargos[4] },
+  { id_colaborador: 106, nome: 'Fernanda', sobrenome: 'Silva', email: 'diretor.financeiro@example.com', senha: '12345678', status: true, role: ROLES.DIRETOR, avatar: null, criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 13).toISOString(), atualizado_em: new Date().toISOString(), id_equipe: 2, id_cargo: 6, equipe: equipes[1], cargo: cargos[5] },
+
+  // Recursos Humanos
+  { id_colaborador: 107, nome: 'Bruno', sobrenome: 'Oliveira', email: 'analista.rh@example.com', senha: '12345678', status: true, role: ROLES.COLABORADOR, avatar: null, criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 3).toISOString(), atualizado_em: new Date().toISOString(), id_equipe: 3, id_cargo: 7, equipe: equipes[2], cargo: cargos[6] },
+  { id_colaborador: 108, nome: 'Patrícia', sobrenome: 'Gomes', email: 'gestor.rh@example.com', senha: '12345678', status: true, role: ROLES.GESTOR, avatar: null, criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 9).toISOString(), atualizado_em: new Date().toISOString(), id_equipe: 3, id_cargo: 8, equipe: equipes[2], cargo: cargos[7] }
 ]
 
 export const colaboradorCompetencias: ColaboradorCompetencia[] = [
@@ -49,6 +75,12 @@ export const emailToColaboradorId: Record<string, number> = {
   'colaborador@example.com': 101,
   'gestor@example.com': 102,
   'diretor@example.com': 103,
+
+  'analista.financeiro@example.com': 104,
+  'gestor.financeiro@example.com': 105,
+  'diretor.financeiro@example.com': 106,
+
+  'analista.rh@example.com': 107,
+  'gestor.rh@example.com': 108,
+  'diretor.rh@example.com': 109,
 }
-
-
