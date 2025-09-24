@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { colaboradores, colaboradorCompetencias, competencias } from './data/colaboradores'
+import { colaboradores, colaboradorCompetencias, competencias, setores, equipes } from './data/colaboradores'
 
 export const handlers = [
   http.post('/api/login', async ({ request }) => {
@@ -341,6 +341,16 @@ export const handlers = [
     const novo = { id_competencia: nextId, nome, tipo: (body.tipo ?? 0) as 0 | 1 }
     competencias.push(novo)
     return HttpResponse.json(novo, { status: 201 })
+  }),
+
+  http.get('/api/setores', async () => {
+    return HttpResponse.json(setores, { status: 200 })
+  }),
+  http.get('/api/equipes', async () => {
+    return HttpResponse.json(equipes, { status: 200 })
+  }),
+  http.get('/api/colaboradores', async () => {
+    return HttpResponse.json(colaboradores, { status: 200 })
   }),
 ]
 
