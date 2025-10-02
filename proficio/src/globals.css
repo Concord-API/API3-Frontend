@@ -125,39 +125,39 @@
 }
 
 .dark {
-  --background: oklch(0 0 0);
-  --foreground: oklch(0.9328 0.0025 228.7857);
-  --card: oklch(0.2097 0.0080 274.5332);
-  --card-foreground: oklch(0.8853 0 0);
-  --popover: oklch(0 0 0);
-  --popover-foreground: oklch(0.9328 0.0025 228.7857);
-  --primary: oklch(0.6692 0.1607 245.0110);
-  --primary-foreground: oklch(1.0000 0 0);
-  --secondary: oklch(0.9622 0.0035 219.5331);
-  --secondary-foreground: oklch(0.1884 0.0128 248.5103);
-  --muted: oklch(0.2090 0 0);
-  --muted-foreground: oklch(0.5637 0.0078 247.9662);
-  --accent: oklch(0.1928 0.0331 242.5459);
-  --accent-foreground: oklch(0.6692 0.1607 245.0110);
+  --radius: 0.6rem;
+  --background: oklch(0.15 0.02 250); /* Fundo azul bem escuro, quase preto */
+  --foreground: oklch(0.95 0.01 250); /* Texto principal (branco suave) */
+  --card: oklch(0.20 0.02 250);       /* Cor dos cards, um pouco mais clara que o fundo */
+  --card-foreground: oklch(0.95 0.01 250); /* Texto dentro dos cards */
+  --popover: oklch(0.12 0.02 250);      /* Popovers um pouco mais escuros */
+  --popover-foreground: oklch(0.95 0.01 250);
+  --primary: oklch(0.6723 0.1606 244.9955); /* Azul primário (mantido do tema claro) */
+  --primary-foreground: oklch(1.0000 0 0); /* Texto do botão primário (branco) */
+  --secondary: oklch(0.8 0.02 250);      /* Cor secundária mais clara */
+  --secondary-foreground: oklch(0.15 0.02 250); /* Texto da cor secundária */
+  --muted: oklch(0.25 0.02 250);         /* Cor "muted" para textos menos importantes */
+  --muted-foreground: oklch(0.7 0.015 250); /* Texto "muted" */
+  --accent: oklch(0.25 0.03 250);         /* Cor de destaque para interações */
+  --accent-foreground: oklch(0.6723 0.1606 244.9955); /* Texto da cor de destaque (azul primário) */
   --destructive: oklch(0.6188 0.2376 25.7658);
-  --border: oklch(0.2674 0.0047 248.0045);
-  --input: oklch(0.3020 0.0288 244.8244);
+  --destructive-foreground: oklch(1.0000 0 0);
+  --border: oklch(0.28 0.02 250);        /* Bordas com um contraste sutil */
+  --input: oklch(0.28 0.02 250);         /* Fundo de campos de input */
   --ring: oklch(0.6818 0.1584 243.3540);
   --chart-1: oklch(0.6723 0.1606 244.9955);
   --chart-2: oklch(0.6907 0.1554 160.3454);
   --chart-3: oklch(0.8214 0.1600 82.5337);
   --chart-4: oklch(0.7064 0.1822 151.7125);
   --chart-5: oklch(0.5919 0.2186 10.5826);
-  --sidebar: oklch(0.2097 0.0080 274.5332);
-  --sidebar-foreground: oklch(0.8853 0 0);
+  --sidebar: oklch(0.20 0.02 250);       /* Sidebar com a mesma cor dos cards */
+  --sidebar-foreground: oklch(0.95 0.01 250);
   --sidebar-primary: oklch(0.6818 0.1584 243.3540);
   --sidebar-primary-foreground: oklch(1.0000 0 0);
-  --sidebar-accent: oklch(0.1928 0.0331 242.5459);
-  --sidebar-accent-foreground: oklch(0.6692 0.1607 245.0110);
-  --sidebar-border: oklch(0.3795 0.0220 240.5943);
+  --sidebar-accent: oklch(0.25 0.03 250); /* Cor de destaque na sidebar */
+  --sidebar-accent-foreground: oklch(0.6723 0.1606 244.9955);
+  --sidebar-border: oklch(0.28 0.02 250);
   --sidebar-ring: oklch(0.6818 0.1584 243.3540);
-  --destructive-foreground: oklch(1.0000 0 0);
-  --radius: 1.3rem;
   --font-sans: Open Sans, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
@@ -186,5 +186,8 @@
   body {
     @apply bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 }

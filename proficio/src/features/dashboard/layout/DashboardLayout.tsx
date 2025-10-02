@@ -1,5 +1,4 @@
 import { Outlet, NavLink, useNavigate, useLocation, matchPath } from 'react-router-dom'
-import { Button } from '@/shared/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import {
   DropdownMenu,
@@ -32,6 +31,7 @@ import { getRoutesForRole } from '@/features/dashboard/routes/dashboardRoutes'
 import { AnimatedLogo } from '@/shared/components/AnimatedLogo'
 import { ROLES } from '@/shared/constants/roles'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/shared/components/ui/breadcrumb'
+import ThemeModeToggle from '@/shared/components/ThemeModeToggle'
 import logoUrl from '@/assets/logo.svg'
 
 export function DashboardLayout() {
@@ -101,12 +101,12 @@ export function DashboardLayout() {
         <SidebarFooter>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center gap-2 rounded-md border px-2 py-2 text-left hover:bg-accent">
-                <Avatar className="size-7">
+              <button className="w-full flex items-center gap-2 rounded-md border px-2 py-2 text-left hover:bg-accent cursor-pointer group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0 group-data-[collapsible=icon]:hover:bg-transparent">
+                <Avatar className="size-7 group-data-[collapsible=icon]:size-9">
                   <AvatarImage src={undefined} alt={user?.name ?? 'Usuário'} />
                   <AvatarFallback>{user?.name?.[0] ?? 'U'}</AvatarFallback>
                 </Avatar>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
                   <div className="truncate text-sm font-medium">{user?.name ?? 'Usuário'}</div>
                   <div className="truncate text-xs text-muted-foreground">{user?.email ?? 'm@example.com'}</div>
                 </div>
@@ -126,7 +126,7 @@ export function DashboardLayout() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">Log out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </SidebarFooter>
@@ -139,7 +139,7 @@ export function DashboardLayout() {
         >
           <SidebarTrigger />
           <Separator orientation="vertical" className="mx-1 h-6" />
-          <div className="text-sm font-medium">
+          <div className="text-sm font-medium flex-1">
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
@@ -165,6 +165,7 @@ export function DashboardLayout() {
               </BreadcrumbList>
             </Breadcrumb>
           </div>
+          <ThemeModeToggle />
         </header>
         <div className="flex flex-1 flex-col p-4 lg:p-6">
           <div className="@container/main flex flex-1 flex-col gap-4 md:gap-6">

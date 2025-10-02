@@ -3,6 +3,7 @@ import { Footer } from "@/shared/components/Footer"
 import { FadeInLeft } from "@/shared/components/motion/FadeInLeft"
 import { SlideInRight } from "@/shared/components/motion/SlideInRight"
 import { AnimatedLogo } from "@/shared/components/AnimatedLogo"
+import ThemeModeToggle from "@/shared/components/ThemeModeToggle"
 import logoUrl from "@/assets/logo.svg"
 
 export function Login() {
@@ -14,6 +15,9 @@ export function Login() {
         <FadeInLeft>
           <div className="text-base font-semibold">Proficio</div>
         </FadeInLeft>
+      </div>
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeModeToggle />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2">
         <div className="hidden md:flex items-center justify-center p-6 md:p-10">
