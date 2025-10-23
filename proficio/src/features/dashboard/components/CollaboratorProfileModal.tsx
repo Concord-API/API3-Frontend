@@ -177,14 +177,14 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
                 {highlightedSkills.map((cc) => {
                   const level = cc.proeficiencia ?? 0
                   const cls = level === 1
-                    ? 'bg-emerald-200 text-emerald-900 border-emerald-300'
+                    ? 'bg-emerald-300 text-emerald-900 border-emerald-400'
                     : level === 2
-                      ? 'bg-emerald-600 text-emerald-50 border-emerald-700'
+                      ? 'bg-emerald-700 text-white border-emerald-800'
                       : level === 3
-                        ? 'bg-orange-200 text-orange-900 border-orange-300'
+                        ? 'bg-orange-500 text-white border-orange-600'
                         : level === 4
-                          ? 'bg-red-200 text-red-900 border-red-300'
-                          : 'bg-purple-200 text-purple-900 border-purple-300'
+                          ? 'bg-red-500 text-white border-red-600'
+                          : 'bg-purple-600 text-white border-purple-700'
                   return (
                     <span key={cc.id} className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
                       {cc.competencia?.nome}

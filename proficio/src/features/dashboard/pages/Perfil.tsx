@@ -50,7 +50,7 @@ export function Perfil() {
   const { user } = useAuth()
   const [editMode] = useState(true)
   const [skills, setSkills] = useState<string[]>([])
-  const [skillItems, setSkillItems] = useState<{ id: number; nome: string; ordem: number }[]>([])
+  const [skillItems, setSkillItems] = useState<{ id: number; nome: string; ordem: number; level?: number }[]>([])
   const [profileEmail, setProfileEmail] = useState<string>('')
   const [profileName, setProfileName] = useState<string>('')
   const [profileCargo, setProfileCargo] = useState<string>('')
@@ -62,6 +62,7 @@ export function Perfil() {
   const [draftSkills, setDraftSkills] = useState<string[]>(skills)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [allCompetencias, setAllCompetencias] = useState<{ id_competencia: number; nome: string }[]>([])
+  const [ownCompetencias, setOwnCompetencias] = useState<{ id_competencia: number; nome: string; proeficiencia: number }[]>([])
   // crop state
   const [avatarCropOpen, setAvatarCropOpen] = useState(false)
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null)
@@ -107,21 +108,40 @@ export function Perfil() {
         .filter((cc) => cc.ordem != null && (cc.ordem as number) > 0)
         .slice()
         .sort((a: ColaboradorCompetencia, b: ColaboradorCompetencia) => (a.ordem as number) - (b.ordem as number))
-        .map((cc) => ({ id: cc.id, nome: cc.competencia?.nome ?? '', ordem: (cc.ordem as number) }))
+        .map((cc) => ({ id: cc.id, nome: cc.competencia?.nome ?? '', ordem: (cc.ordem as number), level: (cc.proeficiencia as number) || 0 }))
         .filter((i) => Boolean(i.nome))
       setSkillItems(destacadasFull.slice(0, 4))
       setSkills(destacadasFull.slice(0, 4).map(i => i.nome))
+
+      const own = (data.competencias ?? [])
+        .map((cc) => ({ id_competencia: cc.competencia?.id_competencia as number, nome: cc.competencia?.nome ?? '', proeficiencia: cc.proeficiencia as number }))
+        .filter((c) => Boolean(c.nome) && Number.isFinite(c.id_competencia)) as { id_competencia: number; nome: string; proeficiencia: number }[]
+      setOwnCompetencias(own)
+      setAllCompetencias(own.map(({ id_competencia, nome }) => ({ id_competencia, nome })))
     }
     fetchProfile()
   }, [user?.id])
 
   useEffect(() => {
-    async function fetchCompetencias() {
-      const { data } = await api.get<{ id_competencia: number; nome: string }[]>(`/competencias`)
-      setAllCompetencias(data)
+    async function fetchOwnCompetencias() {
+      if (!user?.id) return
+      const { data } = await api.get<ColaboradorCompetencia[]>(`/colaboradores/${encodeURIComponent(user.id)}/competencias`)
+      const own = (Array.isArray(data) ? data : [])
+        .map((cc: any) => ({ id_competencia: cc?.competencia?.id_competencia, nome: cc?.competencia?.nome, proeficiencia: cc?.proeficiencia }))
+        .filter((c) => Boolean(c.nome) && Number.isFinite(c.id_competencia)) as { id_competencia: number; nome: string; proeficiencia: number }[]
+      setOwnCompetencias(own)
+      setAllCompetencias(own.map(({ id_competencia, nome }) => ({ id_competencia, nome })))
     }
-    fetchCompetencias()
-  }, [])
+    fetchOwnCompetencias()
+  }, [user?.id])
+
+  function getLevelClass(level: number) {
+    if (level === 1) return 'bg-emerald-300 text-emerald-900 border-emerald-400'
+    if (level === 2) return 'bg-emerald-700 text-white border-emerald-800'
+    if (level === 3) return 'bg-orange-500 text-white border-orange-600'
+    if (level === 4) return 'bg-red-500 text-white border-red-600'
+    return 'bg-purple-600 text-white border-purple-700'
+  }
 
   function reorder(list: string[], start: number, end: number) {
     const copy = [...list]
@@ -282,12 +302,11 @@ export function Perfil() {
                   Você ainda não possui competências em destaque. Use "Editar perfil" para selecionar até 4.
                 </div>
               )}
-              {skills.map((s, idx) => {
-                // Usa cores de proeficiência: 1 verde claro, 2 verde escuro, 3 laranja, 4 vermelho, 5 roxo
-                const colors = ['bg-emerald-200 text-emerald-900 border-emerald-300','bg-emerald-600 text-emerald-50 border-emerald-700','bg-orange-200 text-orange-900 border-orange-300','bg-red-200 text-red-900 border-red-300','bg-purple-200 text-purple-900 border-purple-300']
-                const cls = colors[idx % colors.length]
+              {skills.map((s) => {
+                const level = ownCompetencias.find((c) => c.nome === s)?.proeficiencia || skillItems.find((i) => i.nome === s)?.level || 0
+                const cls = getLevelClass(level)
                 return (
-                  <span key={s} className={`rounded-md border px-2 py-1 text-xs ${cls}`}>
+                  <span key={s} className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
                     {s}
                   </span>
                 )
@@ -383,7 +402,7 @@ export function Perfil() {
                               .filter((cc) => cc.ordem != null && (cc.ordem as number) > 0)
                               .slice()
                               .sort((a: ColaboradorCompetencia, b: ColaboradorCompetencia) => (a.ordem as number) - (b.ordem as number))
-                              .map((cc) => ({ id: cc.id, nome: cc.competencia?.nome ?? '', ordem: (cc.ordem as number) }))
+                              .map((cc) => ({ id: cc.id, nome: cc.competencia?.nome ?? '', ordem: (cc.ordem as number), level: (cc.proeficiencia as number) || 0 }))
                               .filter((i) => Boolean(i.nome))
                             setSkillItems(atualizadas.slice(0, 4))
                             if ((data as any).atualizado_em) setLastUpdated(new Date((data as any).atualizado_em))

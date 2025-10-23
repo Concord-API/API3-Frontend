@@ -166,7 +166,6 @@ export function Setores() {
                     </ItemTitle>
                     <ChevronRight className="size-4 opacity-60 group-hover:translate-x-0.5 transition-transform" />
                   </ItemHeader>
-                  {/* descrição removida para manter altura igual aos cards de Equipes */}
                   <Item className="mt-2" variant="muted" size="sm">
                     <ItemContent>
                       <div className="text-[11px] text-muted-foreground">Diretor responsável</div>
