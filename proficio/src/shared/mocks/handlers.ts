@@ -44,6 +44,19 @@ export const handlers = [
     return HttpResponse.json(payload, { status: 200 })
   }),
 
+  http.get('/api/colaboradores', async () => {
+    return HttpResponse.json(colaboradores, { status: 200 })
+  }),
+
+  http.get('/api/colaborador', async ({ request }) => {
+    const url = new URL(request.url)
+    const idCol = Number(url.searchParams.get('id_colaborador'))
+    const colab = colaboradores.find(c => c.id_colaborador === idCol)
+    if (!colab) return HttpResponse.json({ message: 'Colaborador não encontrado' }, { status: 404 })
+    const comps = colaboradorCompetencias.filter(cc => cc.id_colaborador === idCol)
+    return HttpResponse.json({ ...colab, competencias: comps }, { status: 200 })
+  }),
+
   http.patch('/api/perfil', async ({ request }) => {
     const body = await request.json().catch(() => ({} as any)) as { id?: string; competencias?: { id?: number; id_competencia?: number; ordem: number }[], avatar?: string | Blob, capa?: string | Blob }
     const authUserId = body?.id ?? ''

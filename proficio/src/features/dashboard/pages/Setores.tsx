@@ -1,0 +1,131 @@
+import { useEffect, useMemo, useState } from 'react'
+import { Card } from '@/shared/components/ui/card'
+import { Input } from '@/shared/components/ui/input'
+import { api } from '@/shared/lib/api'
+import type { Colaborador, Equipe, Setor } from '@/shared/types'
+import { useAuth } from '@/features/auth/hooks/useAuth'
+import { useNavigate } from 'react-router-dom'
+import { ChevronRight, List, LayoutGrid } from 'lucide-react'
+import { ButtonGroup } from '@/shared/components/ui/button-group'
+import { Button } from '@/shared/components/ui/button'
+
+export function Setores() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [q, setQ] = useState('')
+  const [setores, setSetores] = useState<Setor[]>([])
+  const [equipes, setEquipes] = useState<Equipe[]>([])
+  const [colaboradores, setColaboradores] = useState<Colaborador[]>([])
+  const [mySetorId, setMySetorId] = useState<number | null>(null)
+  const [mode, setMode] = useState<'table' | 'grid'>('grid')
+
+  useEffect(() => {
+    async function load() {
+      const [s, e, c] = await Promise.all([
+        api.get<Setor[]>('/setores'),
+        api.get<Equipe[]>('/equipes'),
+        api.get<Colaborador[]>('/colaboradores'),
+      ])
+      setSetores(Array.isArray(s.data) ? s.data : [])
+      setEquipes(Array.isArray(e.data) ? e.data : [])
+      setColaboradores(Array.isArray(c.data) ? c.data : [])
+    }
+    load()
+  }, [])
+
+  useEffect(() => {
+    if (!user?.id) return
+    api.get<Colaborador>(`/perfil?id=${encodeURIComponent(user.id)}`).then((res) => {
+      setMySetorId(res.data?.equipe?.setor?.id_setor ?? null)
+    })
+  }, [user?.id])
+
+  const list = useMemo(() => {
+    let base = setores
+    if (user?.role === 'Gestor' as any && mySetorId != null) base = base.filter(s => s.id_setor === mySetorId)
+    const t = q.trim().toLowerCase()
+    if (t) base = base.filter(s => s.nome_setor.toLowerCase().includes(t))
+    return base.map(s => {
+      const eqs = equipes.filter(e => e.id_setor === s.id_setor)
+      const colabs = colaboradores.filter(c => eqs.some(e => e.id_equipe === c.id_equipe))
+      return { setor: s, equipes: eqs.length, colaboradores: colabs.length }
+    })
+  }, [setores, equipes, colaboradores, q, user?.role, mySetorId])
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <div className="w-full max-w-sm">
+          <Input placeholder="Buscar setor..." value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <div className="ml-auto">
+          <ButtonGroup>
+            <Button variant={mode === 'table' ? 'default' : 'outline'} size="icon" className="transition-none" onClick={() => setMode('table')}>
+              <List size={20} strokeWidth={2} absoluteStrokeWidth shapeRendering="geometricPrecision" />
+            </Button>
+            <Button variant={mode === 'grid' ? 'default' : 'outline'} size="icon" className="transition-none" onClick={() => setMode('grid')}>
+              <LayoutGrid size={20} strokeWidth={2} absoluteStrokeWidth shapeRendering="geometricPrecision" />
+            </Button>
+          </ButtonGroup>
+        </div>
+      </div>
+
+      {mode === 'table' ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-muted-foreground">
+                <th className="py-2 pr-4">Setor</th>
+                <th className="py-2 pr-4">Equipes</th>
+                <th className="py-2 pr-4">Colaboradores</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map(({ setor, equipes, colaboradores }) => (
+                <tr key={setor.id_setor} className="border-t hover:bg-accent/40 cursor-pointer" onClick={() => navigate(`/dashboard/equipes?setor=${setor.id_setor}`)}>
+                  <td className="py-3 pr-4 font-medium">{setor.nome_setor}</td>
+                  <td className="py-3 pr-4">{equipes}</td>
+                  <td className="py-3 pr-4">{colaboradores}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {list.map(({ setor, equipes, colaboradores }) => (
+            <button
+              key={setor.id_setor}
+              className="group relative flex flex-col rounded-lg border bg-card p-3 text-left transition hover:bg-accent/50 cursor-pointer"
+              onClick={() => {
+                const qs = new URLSearchParams()
+                qs.set('setor', String(setor.id_setor))
+                navigate(`/dashboard/equipes?${qs.toString()}`)
+              }}
+            >
+              <div className="flex items-start gap-2">
+                <div className="font-medium truncate">{setor.nome_setor}</div>
+                <ChevronRight className="ml-auto size-4 opacity-60 group-hover:translate-x-0.5 transition-transform" />
+              </div>
+              <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
+                <div className="flex items-center justify-between">
+                  <span>Equipes</span>
+                  <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px]">{equipes}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Colaboradores</span>
+                  <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px]">{colaboradores}</span>
+                </div>
+              </div>
+            </button>
+          ))}
+          {list.length === 0 && (
+            <div className="px-4 py-10 text-center text-sm text-muted-foreground">Nenhum setor encontrado.</div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+

@@ -2,7 +2,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/sha
 import { Button } from '@/shared/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { Separator } from '@/shared/components/ui/separator'
-// import { Tooltip, TooltipTrigger } from '@/shared/components/ui/tooltip'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerTrigger, DrawerFooter, DrawerClose } from '@/shared/components/ui/drawer'
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/features/auth/hooks/useAuth'
@@ -11,6 +10,41 @@ import type { Colaborador, ColaboradorCompetencia } from '@/shared/types'
 import { SquarePen, GripVertical, X, Camera } from 'lucide-react'
 import { toast } from 'sonner'
 import { AvatarEditorModal } from '@/features/dashboard/components/AvatarEditorModal'
+
+type Gender = 'Male' | 'Female'
+
+function FemaleAvatarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false" shapeRendering="geometricPrecision">
+      <circle cx="12" cy="8" r="4" fill="currentColor" />
+      <path d="M4 20a8 8 0 0 1 16 0" fill="none" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  )
+}
+
+function MaleAvatarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false" shapeRendering="geometricPrecision">
+      <circle cx="12" cy="7.5" r="3.5" fill="currentColor" />
+      <path d="M6 20c0-3.314 2.686-6 6-6s6 2.686 6 6" fill="none" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  )
+}
+
+function inferGenderFromName(name: string | undefined): Gender {
+  const n = (name ?? '').trim().toLowerCase()
+  if (!n) return 'Male'
+  const FemaleNames = new Set([
+    'tainara','mariana','fernanda','patrícia','patricia'
+  ])
+  const MaleNames = new Set([
+    'adler','richard','lucas','bruno'
+  ])
+  if (FemaleNames.has(n)) return 'Female'
+  if (MaleNames.has(n)) return 'Male'
+  if (n.endsWith('a')) return 'Female'
+  return 'Male'
+}
 
 export function Perfil() {
   const { user } = useAuth()
@@ -37,7 +71,6 @@ export function Perfil() {
     if (drawerOpen) setDraftSkills(skills)
   }, [drawerOpen, skills])
 
-  // croppie handled inside AvatarEditorModal
 
   useEffect(() => {
     async function fetchProfile() {
@@ -135,7 +168,6 @@ export function Perfil() {
 
   return (
     <div className="space-y-6">
-      {/* Capa estilo social */}
       <div className="relative h-40 md:h-56 w-full overflow-hidden rounded-xl border">
         <img
           src={profileCover ?? 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1600&auto=format&fit=crop'}
@@ -161,13 +193,22 @@ export function Perfil() {
           </div>
         )}
       </div>
-      {/* Header card social-like */}
       <Card className="relative -mt-10 px-6 py-5 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="relative -mt-12">
             <Avatar className="size-24 ring-2 ring-background shadow-md">
               <AvatarImage src={photoPreview ?? profilePhoto ?? undefined} alt="Colaborador" />
-              <AvatarFallback>CL</AvatarFallback>
+              <AvatarFallback className="text-[0px]">
+                {inferGenderFromName(profileName?.split(' ')?.[0]) === 'Female' ? (
+                  <span className="text-pink-600">
+                    <FemaleAvatarIcon />
+                  </span>
+                ) : (
+                  <span className="text-blue-600">
+                    <MaleAvatarIcon />
+                  </span>
+                )}
+              </AvatarFallback>
             </Avatar>
             {editMode && (
               <label className="absolute inset-0 grid place-items-center bg-black/40 rounded-full cursor-pointer group">
@@ -213,7 +254,6 @@ export function Perfil() {
         </div>
       </Card>
 
-      {/* Input para o componente abrir seletor */}
       <input
         ref={fileInputRef}
         type="file"
@@ -345,15 +385,12 @@ export function Perfil() {
                           const next = nextNames.map((nome, idx) => {
                             const found = skillItems.find(i => i.nome === nome)
                             if (found) return { id: found.id, ordem: idx + 1 }
-                            // se não existir ainda, enviar id_competencia buscando em allCompetencias
                             const comp = allCompetencias.find(c => c.nome === nome)
                             return comp ? { id_competencia: comp.id_competencia, ordem: idx + 1 } : null
                           }).filter(Boolean) as { id?: number; id_competencia?: number; ordem: number }[]
                           try {
                             await api.patch(`/colaboradores/${user!.id}/perfil`, { competencias: next })
-                            // Reflete imediatamente na UI, inclusive quando estava vazio
                             setSkills(nextNames)
-                            // Recarrega do servidor mock para obter ids atualizados
                             const { data } = await api.get<Colaborador>(`/colaboradores/${encodeURIComponent(user!.id)}/perfil`)
                             const atualizadas = (data.competencias ?? [])
                               .filter((cc) => cc.ordem != null && (cc.ordem as number) > 0)

@@ -14,6 +14,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -29,7 +30,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { Home } from 'lucide-react'
 import { getRoutesForRole } from '@/features/dashboard/routes/dashboardRoutes'
 import { AnimatedLogo } from '@/shared/components/AnimatedLogo'
-import { ROLES } from '@/shared/constants/roles'
+import { Roles } from '@/shared/constants/roles'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/shared/components/ui/breadcrumb'
 import ThemeModeToggle from '@/shared/components/ThemeModeToggle'
 import logoUrl from '@/assets/logo.svg'
@@ -73,29 +74,66 @@ export function DashboardLayout() {
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {getRoutesForRole(user?.role ?? ROLES.COLABORADOR).map((r) => {
-                  const Icon = r.icon ?? Home
-                  return (
-                    <SidebarMenuItem key={r.path || 'root'}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isRouteActive(`/dashboard/${r.path}`, r.path === '')}
-                        tooltip={r.label}
-                      >
-                        <NavLink to={`/dashboard/${r.path}`.replace(/\/$/, '')} end={r.path === ''}>
-                          <Icon />
-                          <span>{r.label}</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          {(() => {
+            const role = user?.role ?? Roles.Colaborador
+            const routes = getRoutesForRole(role)
+            const general = routes.filter(r => (r.section ?? 'general') === 'general')
+            const org = routes.filter(r => r.section === 'org')
+            return (
+              <>
+                <SidebarGroup>
+                  <SidebarGroupLabel>Geral</SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {general.map((r) => {
+                        const Icon = r.icon ?? Home
+                        return (
+                          <SidebarMenuItem key={r.path || 'root'}>
+                            <SidebarMenuButton
+                              asChild
+                              isActive={isRouteActive(`/dashboard/${r.path}`, r.path === '')}
+                              tooltip={r.label}
+                            >
+                              <NavLink to={`/dashboard/${r.path}`.replace(/\/$/, '')} end={r.path === ''}>
+                                <Icon />
+                                <span>{r.label}</span>
+                              </NavLink>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        )
+                      })}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+                {org.length > 0 && (
+                  <SidebarGroup>
+                    <SidebarGroupLabel>Organizações</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {org.map((r) => {
+                          const Icon = r.icon ?? Home
+                          return (
+                            <SidebarMenuItem key={r.path || 'root'}>
+                              <SidebarMenuButton
+                                asChild
+                                isActive={isRouteActive(`/dashboard/${r.path}`, r.path === '')}
+                                tooltip={r.label}
+                              >
+                                <NavLink to={`/dashboard/${r.path}`.replace(/\/$/, '')} end={r.path === ''}>
+                                  <Icon />
+                                  <span>{r.label}</span>
+                                </NavLink>
+                              </SidebarMenuButton>
+                            </SidebarMenuItem>
+                          )
+                        })}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </SidebarGroup>
+                )}
+              </>
+            )
+          })()}
         </SidebarContent>
         <SidebarSeparator />
         <SidebarFooter>
@@ -148,7 +186,7 @@ export function DashboardLayout() {
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 {(() => {
-                  const role = user?.role ?? ROLES.COLABORADOR
+                  const role = user?.role ?? Roles.Colaborador
                   const currentPath = location.pathname.replace(/^\/dashboard\/?/, '')
                   const currentKey = currentPath.split('/')[0] ?? ''
                   const current = getRoutesForRole(role).find(r => r.path === currentKey)

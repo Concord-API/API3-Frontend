@@ -1,4 +1,4 @@
-import { ROLES, type UserRole } from '@/shared/constants/roles'
+import { Roles, type UserRole } from '@/shared/constants/roles'
 
 export type AuthMockUser = {
   id: string
@@ -8,9 +8,7 @@ export type AuthMockUser = {
 }
 
 export const authUsersMock: AuthMockUser[] = [
-  { id: 'u1', name: 'Colaborador', email: 'colaborador@example.com', role: ROLES.COLABORADOR },
-  { id: 'u2', name: 'Gestor', email: 'gestor@example.com', role: ROLES.GESTOR },
-  { id: 'u3', name: 'Diretor', email: 'diretor@example.com', role: ROLES.DIRETOR },
+  { id: 'u1', name: 'Colaborador', email: 'colaborador@example.com', role: Roles.Colaborador },
+  { id: 'u2', name: 'Gestor', email: 'gestor@example.com', role: Roles.Gestor },
+  { id: 'u3', name: 'Diretor', email: 'diretor@example.com', role: Roles.Diretor },
 ]
-
-

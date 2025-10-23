@@ -1,6 +1,6 @@
 import type { UserRole } from "./constants/roles";
 
-export type CompetenciaTipo = 0 | 1; // 0 = HARD, 1 = SOFT
+export type CompetenciaTipo = 0 | 1;
 
 export interface Setor {
     id_setor: number;
@@ -33,12 +33,13 @@ export interface Colaborador {
     data_nasci?: string | null;
     nome: string;
     sobrenome: string;
+    genero: boolean;
     email: string;
     senha: string;
     status: boolean;
     role: UserRole;
-    avatar?: string | null; // base64
-    capa?: string | null;   // base64
+    avatar?: string | null;
+    capa?: string | null;
     criado_em?: string | null;
     atualizado_em?: string | null;
     id_equipe: number;
@@ -51,7 +52,7 @@ export interface Colaborador {
 export interface Competencia {
     id_competencia: number;
     nome: string;
-    tipo: CompetenciaTipo; // 0 (HARD) | 1 (SOFT)
+    tipo: CompetenciaTipo;
 }
 
 export interface ColaboradorCompetencia {
