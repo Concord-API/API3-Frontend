@@ -219,7 +219,7 @@ export function HomeDiretor() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" className="gap-2"><Users className="size-4" /> Ver Equipe</Button>
+            <Button variant="outline" className="gap-2"><Users className="size-4" /> Ver Equipes</Button>
             <Button variant="outline" className="gap-2"><Building2 className="size-4" /> Ver Setores</Button>
             <Button variant="outline" className="gap-2"><ClipboardCheck className="size-4" /> Realizar Avaliação</Button>
             <Button variant="outline" className="gap-2"><BarChart3 className="size-4" /> Relatórios</Button>

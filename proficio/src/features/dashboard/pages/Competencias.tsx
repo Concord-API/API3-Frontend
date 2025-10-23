@@ -1,17 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
-import { Separator } from '@/shared/components/ui/separator'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetDescription, SheetTrigger, SheetClose } from '@/shared/components/ui/sheet'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { api } from '@/shared/lib/api'
 import type { ColaboradorCompetencia, Competencia } from '@/shared/types'
-import { ChevronDown, Check, Trash } from 'lucide-react'
+import { Check, Trash, ChevronDown, Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { ButtonGroup } from '@/shared/components/ui/button-group'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/shared/components/ui/command'
 
 type UserCompetenciaItem = ColaboradorCompetencia & { competencia: Competencia }
 
@@ -47,6 +48,21 @@ export function Competencias() {
   const [queryTable, setQueryTable] = useState('')
   const [filterType, setFilterType] = useState<'ALL' | 'HARD' | 'SOFT'>('ALL')
   const [sortKey, setSortKey] = useState<'nivel-desc' | 'nivel-asc' | 'nome-asc'>('nivel-desc')
+  const [comboOpen, setComboOpen] = useState(false)
+  const comboRef = useRef<HTMLDivElement | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
+
+  useEffect(() => {
+    function onDocMouseDown(e: MouseEvent) {
+      const target = e.target as Node | null
+      if (!comboRef.current || !target) return
+      if (!comboRef.current.contains(target)) {
+        if (selected) setComboOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [selected])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -94,7 +110,6 @@ export function Competencias() {
 
   useEffect(() => {
     loadData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
   async function handleAdd() {
@@ -172,59 +187,75 @@ export function Competencias() {
                 <SheetDescription>Escolha uma existente ou crie uma nova</SheetDescription>
               </SheetHeader>
               <div className="mt-4 space-y-5">
-                <div className="space-y-2">
-                  <Label>Competência</Label>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="justify-between w-full">
-                        <span className="truncate">{selected?.nome || (query ? query : 'Selecionar/Buscar')}</span>
-                        <ChevronDown className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-[420px] p-3">
-                      <Input
-                        placeholder="Digite para buscar..."
+            <div className="space-y-2">
+              <Label>Competência</Label>
+              <div ref={comboRef}>
+                {!comboOpen ? (
+                  <Button variant="outline" className="justify-between w-full" onClick={() => setComboOpen(true)}>
+                    <span className="truncate">{(isCreating && query) ? `Criar: ${query}` : (selected?.nome || (query ? query : 'Selecionar/Buscar'))}</span>
+                    <ChevronDown className="size-4" />
+                  </Button>
+                ) : (
+                  <div className="rounded-md border">
+                    <Command>
+                      <CommandInput
+                        placeholder="Digite para buscar ou criar..."
                         value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        onKeyDown={(e) => {
-                          e.stopPropagation()
-                          if (['ArrowDown', 'ArrowUp', 'Home', 'End', 'PageDown', 'PageUp'].includes(e.key)) {
-                            e.preventDefault()
-                          }
-                        }}
+                        onValueChange={(v) => { setQuery(v); if (selected) setSelected(null); setIsCreating(false) }}
                       />
-                      <Separator className="my-2" />
-                      {filtered.length === 0 && (
-                        <div className="px-1 py-1 text-xs text-muted-foreground">Nenhuma encontrada. Continue para criar.</div>
-                      )}
-                      {filtered.map((c) => (
-                        <DropdownMenuItem key={c.id_competencia} onClick={() => { setSelected(c); setQuery(c.nome) }}>
-                          <Check className={`mr-2 size-4 ${selected?.id_competencia === c.id_competencia ? 'opacity-100' : 'opacity-0'}`} />
-                          <span className="truncate">{c.nome}</span>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <div className="text-xs text-muted-foreground">Se não existir, o próximo passo permite definir detalhes.</div>
-                </div>
+                      <CommandList>
+                        <CommandEmpty>
+                          {query ? (
+                            <div className="px-2 py-2 text-sm">
+                              Nenhuma encontrada. Se preferir, continue para criar "{query}".
+                            </div>
+                          ) : (
+                            'Digite para buscar'
+                          )}
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {filtered.map((c) => (
+                            <CommandItem key={c.id_competencia} onSelect={() => { setSelected(c); setQuery(c.nome); setIsCreating(false); setComboOpen(false) }}>
+                              <Check className={`mr-2 size-4 ${selected?.id_competencia === c.id_competencia ? 'opacity-100' : 'opacity-0'}`} />
+                              <span className="truncate">{c.nome}</span>
+                            </CommandItem>
+                          ))}
+                          {query && !allCompetencias.some((a) => (a?.nome || '').toLowerCase() === query.toLowerCase()) && (
+                            <CommandItem className="text-primary" onSelect={() => { setSelected(null); setIsCreating(true); setComboOpen(false) }}>
+                              <Plus className="mr-2 size-4" />
+                              Criar "{query}" como nova competência
+                            </CommandItem>
+                          )}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </div>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground">{isCreating ? (
+                <>Você criará a competência "{query}". Defina o Tipo e o Nível e clique em Adicionar.</>
+              ) : (
+                <>Se não existir, continue preenchendo o Tipo e o Nível abaixo e clique em Adicionar.</>
+              )}</div>
+            </div>
                 {!selected && (
                   <div className="space-y-2">
                     <Label>Tipo</Label>
-                    <div className="flex items-center gap-2">
+                    <ButtonGroup>
                       <Button variant={newType === 0 ? 'default' : 'outline'} onClick={() => setNewType(0)}>HARD</Button>
                       <Button variant={newType === 1 ? 'default' : 'outline'} onClick={() => setNewType(1)}>SOFT</Button>
-                    </div>
+                    </ButtonGroup>
                   </div>
                 )}
                 <div className="space-y-2">
                   <Label>Nível de proeficiência</Label>
-                  <div className="flex items-center gap-2">
+                  <ButtonGroup>
                     {[1, 2, 3, 4, 5].map((n) => (
                       <Button key={n} variant={newLevel === n ? 'default' : 'outline'} onClick={() => setNewLevel(n)}>
                         {n}
                       </Button>
                     ))}
-                  </div>
+                  </ButtonGroup>
                   <div className="text-xs text-muted-foreground">{NIVEL_LABEL[newLevel]}</div>
                 </div>
               </div>
@@ -241,11 +272,11 @@ export function Competencias() {
             <div className="flex-1 min-w-48">
               <Input placeholder="Buscar por nome..." value={queryTable} onChange={(e) => setQueryTable(e.target.value)} />
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant={filterType === 'ALL' ? 'default' : 'outline'} onClick={() => setFilterType('ALL')}>Todos</Button>
-              <Button variant={filterType === 'HARD' ? 'default' : 'outline'} onClick={() => setFilterType('HARD')}>HARD</Button>
-              <Button variant={filterType === 'SOFT' ? 'default' : 'outline'} onClick={() => setFilterType('SOFT')}>SOFT</Button>
-            </div>
+			<ButtonGroup>
+				<Button variant={filterType === 'ALL' ? 'default' : 'outline'} onClick={() => setFilterType('ALL')}>Todos</Button>
+				<Button variant={filterType === 'HARD' ? 'default' : 'outline'} onClick={() => setFilterType('HARD')}>HARD</Button>
+				<Button variant={filterType === 'SOFT' ? 'default' : 'outline'} onClick={() => setFilterType('SOFT')}>SOFT</Button>
+			</ButtonGroup>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">Ordenar</Button>

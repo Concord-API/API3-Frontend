@@ -1,13 +1,13 @@
-export const ROLES = {
-  COLABORADOR: 'ROLE_COLABORADOR',
-  GESTOR: 'ROLE_GESTOR',
-  DIRETOR: 'ROLE_DIRETOR',
+export const Roles = {
+  Colaborador: 'Colaborador',
+  Gestor: 'Gestor',
+  Diretor: 'Diretor',
 } as const;
 
-export type UserRole = typeof ROLES[keyof typeof ROLES]
+export type UserRole = typeof Roles[keyof typeof Roles]
 
 export const ROLE_LABEL: Record<UserRole, string> = {
-  ROLE_COLABORADOR: 'Colaborador',
-  ROLE_GESTOR: 'Gestor',
-  ROLE_DIRETOR: 'Diretor',
+  Colaborador: 'Colaborador',
+  Gestor: 'Gestor',
+  Diretor: 'Diretor',
 };
