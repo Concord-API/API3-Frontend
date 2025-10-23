@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
+import { Camera } from 'lucide-react'
 // @ts-expect-error types shipped separately
 import Croppie from 'croppie'
 import 'croppie/croppie.css'
@@ -67,9 +68,15 @@ export function AvatarEditorModal({ open, onClose, src, onPick, onSave }: Props)
               <div ref={cropElRef} className="rounded-md border" />
             </div>
           )}
-          <div className="mt-4 flex justify-end gap-2">
-            <Button variant="outline" onClick={onClose}>Fechar</Button>
-            <Button
+          <div className="mt-4 flex items-center justify-between">
+            <Button type="button" variant="outline" onClick={onClose}>Fechar</Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={onPick}>
+                <Camera className="mr-2 size-4" /> Selecionar imagem
+              </Button>
+              <Button
+                type="button"
+                disabled={!src}
               onClick={async () => {
                 if (!cropInstanceRef.current) {
                   onPick()
@@ -80,7 +87,8 @@ export function AvatarEditorModal({ open, onClose, src, onPick, onSave }: Props)
               }}
             >
               Salvar
-            </Button>
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

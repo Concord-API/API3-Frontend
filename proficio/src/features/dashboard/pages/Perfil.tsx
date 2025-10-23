@@ -211,32 +211,14 @@ export function Perfil() {
               </AvatarFallback>
             </Avatar>
             {editMode && (
-              <label className="absolute inset-0 grid place-items-center bg-black/40 rounded-full cursor-pointer group">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0]
-                    if (!file) return
-                    const url = URL.createObjectURL(file)
-                    setPhotoPreview(url)
-                    const reader = new FileReader()
-                    reader.onload = async () => {
-                      const base64 = String(reader.result)
-                      setPhotoPreview(base64)
-                      await api.patch(`/colaboradores/${user!.id}/perfil`, { avatar: base64 })
-                      setProfilePhoto(base64)
-                      setLastUpdated(new Date())
-                      toast.success('Foto de perfil atualizada')
-                    }
-                    reader.readAsDataURL(file)
-                  }}
-                />
-                <span className="flex items-center gap-1 text-xs text-white opacity-100 group-hover:opacity-100">
-                  <Camera className="size-4" /> Editar
-                </span>
-              </label>
+              <button
+                type="button"
+                onClick={() => setAvatarCropOpen(true)}
+                className="absolute -bottom-2 -right-2 grid place-items-center size-8 rounded-full bg-primary text-primary-foreground shadow ring-2 ring-background hover:brightness-95"
+                aria-label="Alterar foto de perfil"
+              >
+                <Camera className="size-4" />
+              </button>
             )}
           </div>
           <div className="min-w-0 flex-1">
@@ -271,15 +253,19 @@ export function Perfil() {
         src={avatarSrc ?? (profilePhoto ?? null)}
         onPick={() => fileInputRef.current?.click()}
         onClose={() => { setAvatarCropOpen(false); setAvatarSrc(null) }}
-        onSave={async (blob) => {
-          const url = URL.createObjectURL(blob)
-          setPhotoPreview(url)
-          await api.patch('/perfil', { id: user!.id, avatar: url })
-          setProfilePhoto(url)
-          setLastUpdated(new Date())
-          toast.success('Foto de perfil atualizada')
-          setAvatarCropOpen(false)
-          setAvatarSrc(null)
+        onSave={(blob) => {
+          const reader = new FileReader()
+          reader.onload = async () => {
+            const base64 = String(reader.result)
+            setPhotoPreview(base64)
+            await api.patch(`/colaboradores/${user!.id}/perfil`, { avatar: base64 })
+            setProfilePhoto(base64)
+            setLastUpdated(new Date())
+            toast.success('Foto de perfil atualizada')
+            setAvatarCropOpen(false)
+            setAvatarSrc(null)
+          }
+          reader.readAsDataURL(blob)
         }}
       />
 
@@ -297,8 +283,9 @@ export function Perfil() {
                 </div>
               )}
               {skills.map((s, idx) => {
-                const palette = ['bg-blue-100 text-blue-800 border-blue-200','bg-emerald-100 text-emerald-800 border-emerald-200','bg-amber-100 text-amber-800 border-amber-200','bg-violet-100 text-violet-800 border-violet-200']
-                const cls = palette[idx % palette.length]
+                // Usa cores de proeficiência: 1 verde claro, 2 verde escuro, 3 laranja, 4 vermelho, 5 roxo
+                const colors = ['bg-emerald-200 text-emerald-900 border-emerald-300','bg-emerald-600 text-emerald-50 border-emerald-700','bg-orange-200 text-orange-900 border-orange-300','bg-red-200 text-red-900 border-red-300','bg-purple-200 text-purple-900 border-purple-300']
+                const cls = colors[idx % colors.length]
                 return (
                   <span key={s} className={`rounded-md border px-2 py-1 text-xs ${cls}`}>
                     {s}

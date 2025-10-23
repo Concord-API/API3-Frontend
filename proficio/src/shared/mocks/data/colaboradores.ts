@@ -3,14 +3,14 @@ import { Gender } from '@/shared/constants/gender'
 import type { Setor, Cargo, Equipe, Colaborador, Competencia, ColaboradorCompetencia } from '@/shared/types'
 
 export const setores: Setor[] = [
-  { id_setor: 1, nome_setor: 'Tecnologia', desc_setor: 'TI', status: true },
-  { id_setor: 2, nome_setor: 'Financeiro', desc_setor: 'Gestão Financeira e Contábil', status: true },
-  { id_setor: 3, nome_setor: 'Recursos Humanos', desc_setor: 'Gestão de Pessoas e RH', status: true },
+  { id_setor: 1, nome_setor: 'Tecnologia', desc_setor: 'TI', status: true, id_diretor: 103 },
+  { id_setor: 2, nome_setor: 'Financeiro', desc_setor: 'Gestão Financeira e Contábil', status: true, id_diretor: 109 },
+  { id_setor: 3, nome_setor: 'Recursos Humanos', desc_setor: 'Gestão de Pessoas e RH', status: true, id_diretor: null },
 ]
 
 export const cargos: Cargo[] = [
   // Tecnologia
-  { id_cargo: 1, nome_cargo: 'Desenvolvedor Banckend Junior', status: true, id_setor: 1, setor: setores[0] },
+  { id_cargo: 1, nome_cargo: 'Desenvolvedor Banckend Junior',id_setor: 1, status: true,  setor: setores[0] },
   { id_cargo: 2, nome_cargo: 'Gestor de Projetos', id_setor: 1, status: true, setor: setores[0] },
   { id_cargo: 3, nome_cargo: 'Diretor de Tecnologia', id_setor: 1, status: true, setor: setores[0] },
 
@@ -51,8 +51,8 @@ export const colaboradores: Colaborador[] = [
   { id_colaborador: 102, nome: 'Adler', sobrenome: 'Alves', email: 'gestor@example.com', data_nasci: '1990-02-11', senha: '12345678',genero: Gender.Male, status: true, role: Roles.Gestor, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Adler%20Alves', capa: 'https://picsum.photos/seed/102/1200/300', criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 9).toISOString(), atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), id_equipe: 1, id_cargo: 2, equipe: equipes[0], cargo: cargos[1] },
   { id_colaborador: 103, nome: 'Richard', sobrenome: 'Cordeiro', email: 'diretor@example.com', data_nasci: '1987-09-05', senha: '12345678',genero: Gender.Male, status: true, role: Roles.Diretor, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Richard%20Cordeiro', capa: 'https://picsum.photos/seed/103/1200/300', criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 13).toISOString(), atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), id_equipe: 1, id_cargo: 3, equipe: equipes[0], cargo: cargos[2] },
   { id_colaborador: 104, nome: 'João', sobrenome: 'Baranov', email: 'colaborador@example.com', data_nasci: '1999-03-22', senha: '12345678',genero: Gender.Female, status: true, role: Roles.Colaborador, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jo%C3%A3o%20Baranov', capa: 'https://picsum.photos/seed/104/1200/300', criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 3).toISOString(), atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), id_equipe: 1, id_cargo: 1, equipe: equipes[0], cargo: cargos[0] },
-  { id_colaborador: 105, nome: 'João', sobrenome: 'Andrade', email: 'gestor@example.com', data_nasci: '1989-11-02', senha: '12345678',genero: Gender.Male, status: true, role: Roles.Gestor, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jo%C3%A3o%20Andrade', capa: 'https://picsum.photos/seed/105/1200/300', criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 9).toISOString(), atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), id_equipe: 1, id_cargo: 2, equipe: equipes[0], cargo: cargos[1] },
-  { id_colaborador: 106, nome: 'Victor', sobrenome: 'Nogueira', email: 'diretor@example.com', data_nasci: '1985-04-14', senha: '12345678',genero: Gender.Male, status: true, role: Roles.Diretor, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Victor%20Nogueira', capa: 'https://picsum.photos/seed/106/1200/300', criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 13).toISOString(), atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), id_equipe: 1, id_cargo: 3, equipe: equipes[0], cargo: cargos[2] },
+  { id_colaborador: 105, nome: 'João', sobrenome: 'Andrade', email: 'joao.andrade@example.com', data_nasci: '1989-11-02', senha: '12345678',genero: Gender.Male, status: true, role: Roles.Colaborador, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jo%C3%A3o%20Andrade', capa: 'https://picsum.photos/seed/105/1200/300', criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 9).toISOString(), atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), id_equipe: 1, id_cargo: 1, equipe: equipes[0], cargo: cargos[0] },
+  { id_colaborador: 106, nome: 'Victor', sobrenome: 'Nogueira', email: 'colaborador@example.com', data_nasci: '1985-04-14', senha: '12345678',genero: Gender.Male, status: true, role: Roles.Colaborador, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Victor%20Nogueira', capa: 'https://picsum.photos/seed/106/1200/300', criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 13).toISOString(), atualizado_em: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), id_equipe: 1, id_cargo: 1, equipe: equipes[0], cargo: cargos[0] },
 
   // Financeiro
   { id_colaborador: 107, nome: 'Mariana', sobrenome: 'Costa', email: 'analista.financeiro@example.com', data_nasci: '1996-01-29', senha: '12345678',genero: Gender.Female, status: true, role: Roles.Colaborador, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mariana%20Costa', capa: 'https://picsum.photos/seed/107/1200/300', criado_em: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 2).toISOString(), atualizado_em: new Date().toISOString(), id_equipe: 2, id_cargo: 4, equipe: equipes[1], cargo: cargos[3] },

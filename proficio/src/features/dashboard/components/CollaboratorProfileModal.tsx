@@ -1,7 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { Separator } from '@/shared/components/ui/separator'
-import { Badge } from '@/shared/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs'
 import { ScrollArea } from '@/shared/components/ui/scroll-area'
 import { useEffect, useMemo, useState } from 'react'
@@ -93,6 +92,19 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
     return teamMembers.find((c) => String((c as any).role) === 'Gestor') ?? null
   }, [teamMembers])
 
+  const currentSetorId = useMemo(() => {
+    return data?.equipe?.setor?.id_setor ?? (data as any)?.id_setor ?? null
+  }, [data])
+
+  const teamDirector = useMemo(() => {
+    if (!currentSetorId) return null
+    return (
+      team.find(
+        (c) => String((c as any).role) === 'Diretor' && ((c.cargo?.id_setor ?? (c as any).id_setor) === currentSetorId)
+      ) ?? null
+    )
+  }, [team, currentSetorId])
+
   function formatTenure(iso?: string | null) {
     if (!iso) return '—'
     const start = new Date(iso)
@@ -162,9 +174,23 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
           <CardContent className="pb-2">
             {highlightedSkills.length > 0 ? (
               <div className="flex flex-wrap gap-2">
-                {highlightedSkills.map((cc) => (
-                  <Badge key={cc.id} variant="secondary">{cc.competencia?.nome}</Badge>
-                ))}
+                {highlightedSkills.map((cc) => {
+                  const level = cc.proeficiencia ?? 0
+                  const cls = level === 1
+                    ? 'bg-emerald-200 text-emerald-900 border-emerald-300'
+                    : level === 2
+                      ? 'bg-emerald-600 text-emerald-50 border-emerald-700'
+                      : level === 3
+                        ? 'bg-orange-200 text-orange-900 border-orange-300'
+                        : level === 4
+                          ? 'bg-red-200 text-red-900 border-red-300'
+                          : 'bg-purple-200 text-purple-900 border-purple-300'
+                  return (
+                    <span key={cc.id} className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
+                      {cc.competencia?.nome}
+                    </span>
+                  )
+                })}
               </div>
             ) : (
               <div className="text-sm text-muted-foreground">Nenhuma competência em destaque</div>
@@ -201,6 +227,35 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
               </TabsContent>
               <TabsContent value="org" className="mt-3">
                 <div className="space-y-4">
+                  {/* Diretor no topo */}
+                  <div className="flex flex-col items-center">
+                    <div className="text-xs text-muted-foreground mb-1">Diretor</div>
+                    <div className="flex items-center gap-2 rounded-lg border p-2 cursor-pointer hover:bg-accent/40 transition-colors" onClick={() => { if (teamDirector) setCurrentId(teamDirector.id_colaborador) }} role="button" tabIndex={0}>
+                      <Avatar className="size-10">
+                        <AvatarImage src={(teamDirector as any)?.avatar ?? undefined} alt="Diretor" />
+                        <AvatarFallback className="text-[0px]">
+                          {inferGenderFromName(teamDirector?.nome) === 'Female' ? (
+                            <span className="text-pink-600">
+                              <FemaleAvatarIcon />
+                            </span>
+                          ) : (
+                            <span className="text-blue-600">
+                              <MaleAvatarIcon />
+                            </span>
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{teamDirector ? `${teamDirector.nome} ${teamDirector.sobrenome}` : '—'}</div>
+                        <div className="text-xs text-muted-foreground truncate">{teamDirector?.cargo?.nome_cargo ?? '—'}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Conector */}
+                  {(teamDirector || teamManager) && <div className="mx-auto h-6 w-px bg-border" />}
+
+                  {/* Gestor logo abaixo do diretor */}
                   <div className="flex flex-col items-center">
                     <div className="text-xs text-muted-foreground mb-1">Gestor</div>
                     <div className="flex items-center gap-2 rounded-lg border p-2 cursor-pointer hover:bg-accent/40 transition-colors" onClick={() => { if (teamManager) setCurrentId(teamManager.id_colaborador) }} role="button" tabIndex={0}>
@@ -225,11 +280,13 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
                     </div>
                   </div>
 
+                  {/* Conector */}
                   <div className="mx-auto h-6 w-px bg-border" />
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {/* Time: centralizado mesmo quando ímpar */}
+                  <div className="flex flex-wrap justify-center gap-3">
                     {teamMembers
-                      .filter((m) => m.id_colaborador !== (teamManager?.id_colaborador ?? -1))
+                      .filter((m) => String((m as any).role) === 'Colaborador')
                       .map((m) => (
                         <button key={m.id_colaborador} className="rounded-lg border p-2 text-left hover:bg-accent/40 transition-colors cursor-pointer" onClick={() => setCurrentId(m.id_colaborador)}>
                           <div className="flex items-center gap-2">
