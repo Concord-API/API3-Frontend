@@ -7,6 +7,9 @@ export interface Setor {
     nome_setor: string;
     desc_setor?: string | null;
     status: boolean;
+    // diretor responsável (opcional)
+    id_diretor?: number | null;
+    diretor?: Colaborador | null;
 }
 
 export interface Cargo {

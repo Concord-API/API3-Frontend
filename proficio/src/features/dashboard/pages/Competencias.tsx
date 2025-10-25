@@ -78,6 +78,15 @@ export function Competencias() {
     return { total, avg: Number(avg.toFixed(1)), hard, soft }
   }, [userCompetencias])
 
+  const levelCounts = useMemo(() => {
+    const counts: Record<1|2|3|4|5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+    for (const uc of userCompetencias) {
+      const v = Math.min(5, Math.max(1, uc.proeficiencia as number)) as 1|2|3|4|5
+      counts[v] += 1
+    }
+    return counts
+  }, [userCompetencias])
+
   const displayed = useMemo(() => {
     const q = queryTable.trim().toLowerCase()
     let items = userCompetencias.filter((uc) => uc.competencia?.nome.toLowerCase().includes(q))
@@ -146,7 +155,7 @@ export function Competencias() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Total</CardTitle>
@@ -159,7 +168,10 @@ export function Competencias() {
         <Card>
           <CardHeader>
             <CardTitle>Média</CardTitle>
-            <CardDescription>Proeficiência (1 a 5)</CardDescription>
+            <CardDescription>
+              Proeficiência (1 a 5)
+              <span className="ml-2 text-[11px] text-muted-foreground">(visível apenas para você)</span>
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-semibold">{stats.avg}</div>
@@ -172,8 +184,24 @@ export function Competencias() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2 text-sm">
-              <span className="inline-flex items-center rounded-full border px-2 py-0.5">HARD: {stats.hard}</span>
-              <span className="inline-flex items-center rounded-full border px-2 py-0.5">SOFT: {stats.soft}</span>
+              <span className="inline-flex items-center rounded-full border px-2 py-0.5 bg-blue-600 text-white border-blue-700 font-semibold">Hard: {stats.hard}</span>
+              <span className="inline-flex items-center rounded-full border px-2 py-0.5 bg-emerald-600 text-white border-emerald-700 font-semibold">Soft: {stats.soft}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Por nível</CardTitle>
+            <CardDescription>Quantidade por proeficiência</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2 text-sm">
+              <span className="inline-flex items-center rounded-full border px-2 py-0.5 bg-emerald-500 text-white border-emerald-700 font-semibold">{NIVEL_LABEL[1]}: {levelCounts[1]}</span>
+              <span className="inline-flex items-center rounded-full border px-2 py-0.5 bg-emerald-700 text-white border-emerald-800 font-semibold">{NIVEL_LABEL[2]}: {levelCounts[2]}</span>
+              <span className="inline-flex items-center rounded-full border px-2 py-0.5 bg-orange-600 text-white border-orange-700 font-semibold">{NIVEL_LABEL[3]}: {levelCounts[3]}</span>
+              <span className="inline-flex items-center rounded-full border px-2 py-0.5 bg-red-600 text-white border-red-700 font-semibold">{NIVEL_LABEL[4]}: {levelCounts[4]}</span>
+              <span className="inline-flex items-center rounded-full border px-2 py-0.5 bg-purple-700 text-white border-purple-800 font-semibold">{NIVEL_LABEL[5]}: {levelCounts[5]}</span>
             </div>
           </CardContent>
         </Card>
@@ -317,10 +345,18 @@ export function Competencias() {
                 )}
                 {displayed.map((uc) => {
                   const pct = Math.min(100, Math.max(0, (uc.proeficiencia / 5) * 100))
-                  const color = uc.proeficiencia >= 5 ? 'bg-emerald-500' : uc.proeficiencia >= 4 ? 'bg-green-500' : uc.proeficiencia >= 3 ? 'bg-blue-500' : uc.proeficiencia >= 2 ? 'bg-amber-500' : 'bg-red-500'
+                  const color = uc.proeficiencia === 1
+                    ? 'bg-emerald-300'
+                    : uc.proeficiencia === 2
+                      ? 'bg-emerald-700'
+                      : uc.proeficiencia === 3
+                        ? 'bg-orange-500'
+                        : uc.proeficiencia === 4
+                          ? 'bg-red-500'
+                          : 'bg-purple-600'
                   const typeBadge = uc.competencia?.tipo === 0
-                    ? 'bg-blue-100 text-blue-700 border-blue-200'
-                    : 'bg-violet-100 text-violet-700 border-violet-200'
+                    ? 'bg-blue-600 text-white border-blue-700 font-semibold'
+                    : 'bg-emerald-600 text-white border-emerald-700 font-semibold'
                   return (
                     <tr key={uc.id} className="border-t">
                       <td className="py-3 pr-4">
@@ -328,7 +364,7 @@ export function Competencias() {
                       </td>
                       <td className="py-3 pr-4">
                         <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${typeBadge}`}>
-                          {normalizeTipo(uc.competencia?.tipo) === 0 ? 'HARD' : 'SOFT'}
+                          {normalizeTipo(uc.competencia?.tipo) === 0 ? 'Hard' : 'Soft'}
                         </span>
                       </td>
                       <td className="py-3 pr-4 align-middle">

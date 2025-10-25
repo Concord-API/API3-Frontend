@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { Input } from '@/shared/components/ui/input'
 import { Button } from '@/shared/components/ui/button'
-import { Card, CardContent } from '@/shared/components/ui/card'
+// removed unused Card imports after redesign
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { api } from '@/shared/lib/api'
 import type { Colaborador, Setor, Equipe } from '@/shared/types'
-import { List, LayoutGrid } from 'lucide-react'
+import { List, LayoutGrid, Plus } from 'lucide-react'
 import { CollaboratorProfileModal } from '@/features/dashboard/components/CollaboratorProfileModal'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { ButtonGroup } from '@/shared/components/ui/button-group'
@@ -13,6 +13,10 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Roles } from '@/shared/constants/roles'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/shared/components/ui/command'
 import { ChevronDown } from 'lucide-react'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/shared/components/ui/dialog'
+import { Label } from '@/shared/components/ui/label'
+import { toast } from 'sonner'
+import { Item, ItemContent, ItemGroup, ItemHeader, ItemMedia, ItemTitle } from '@/shared/components/ui/item'
 
 type Gender = 'Male' | 'Female'
 
@@ -76,6 +80,12 @@ export function Colaboradores() {
   const [equipeQuery, setEquipeQuery] = useState('')
   const setorRef = useRef<HTMLDivElement | null>(null)
   const equipeRef = useRef<HTMLDivElement | null>(null)
+  const [addOpen, setAddOpen] = useState(false)
+  const [novoNome, setNovoNome] = useState('')
+  const [novoSobrenome, setNovoSobrenome] = useState('')
+  const [novoEmail, setNovoEmail] = useState('')
+  const [novoEquipe, setNovoEquipe] = useState<number | 'none'>('none')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     function onDocMouseDown(e: MouseEvent) {
@@ -175,7 +185,86 @@ export function Colaboradores() {
             </div>
           </>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+            <DialogTrigger asChild>
+              <Button size="icon" className="fixed bottom-6 right-6 h-10 p-4 w-auto rounded-lg   shadow-lg">
+                <Plus className="size-5" />
+                <p>Novo colaborador</p>
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Novo colaborador</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-3 py-2">
+                <div className="grid gap-1">
+                  <Label htmlFor="nome-colab">Nome</Label>
+                  <Input id="nome-colab" value={novoNome} onChange={(e) => setNovoNome(e.target.value)} />
+                </div>
+                <div className="grid gap-1">
+                  <Label htmlFor="sobrenome-colab">Sobrenome</Label>
+                  <Input id="sobrenome-colab" value={novoSobrenome} onChange={(e) => setNovoSobrenome(e.target.value)} />
+                </div>
+                <div className="grid gap-1">
+                  <Label htmlFor="email-colab">Email</Label>
+                  <Input id="email-colab" type="email" value={novoEmail} onChange={(e) => setNovoEmail(e.target.value)} />
+                </div>
+                <div className="grid gap-1">
+                  <Label>Equipe</Label>
+                  <div className="relative">
+                    <select
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      value={novoEquipe === 'none' ? '' : String(novoEquipe)}
+                      onChange={(e) => setNovoEquipe(e.target.value ? Number(e.target.value) : 'none')}
+                    >
+                      <option value="">Selecione uma equipe</option>
+                      {equipes.map(eq => (
+                        <option key={eq.id_equipe} value={eq.id_equipe}>{eq.nome_equipe}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  disabled={saving || novoNome.trim().length === 0 || !novoEmail.trim() || novoEquipe === 'none'}
+                  onClick={async () => {
+                    const nome = novoNome.trim()
+                    const sobrenome = novoSobrenome.trim()
+                    const email = novoEmail.trim()
+                    if (!nome || !email || novoEquipe === 'none') return
+                    setSaving(true)
+                    try {
+                      const payload: Partial<Colaborador> = {
+                        nome,
+                        sobrenome,
+                        email,
+                        id_equipe: novoEquipe as number,
+                        status: true as any,
+                        role: Roles.Colaborador as any,
+                        senha: '12345678' as any,
+                        genero: true as any,
+                        id_cargo: 1 as any,
+                      }
+                      const { data } = await api.post<Colaborador>('/colaboradores', payload)
+                      setItems((prev) => [...prev, data])
+                      toast.success('Colaborador criado')
+                      setAddOpen(false)
+                      setNovoNome('')
+                      setNovoSobrenome('')
+                      setNovoEmail('')
+                      setNovoEquipe('none')
+                    } finally {
+                      setSaving(false)
+                    }
+                  }}
+                >
+                  {saving ? 'Salvando...' : 'Salvar'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <ButtonGroup>
             <Button
               variant={mode === 'table' ? 'default' : 'outline'}
@@ -227,7 +316,12 @@ export function Colaboradores() {
                           )}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="font-medium truncate">{c.nome} {c.sobrenome}</div>
+                      <div className="min-w-0 flex items-center gap-2">
+                        <div className="font-medium truncate">{c.nome} {c.sobrenome}</div>
+                        {String(c.id_colaborador) === (user?.id ?? '') && (
+                          <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px]">Você</span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="py-3 pr-4">{c.cargo?.nome_cargo ?? '—'}</td>
@@ -243,36 +337,49 @@ export function Colaboradores() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map(c => (
-            <Card key={c.id_colaborador} className="hover:shadow-sm hover:bg-accent/40 transition-colors cursor-pointer" onClick={() => setSelectedId(c.id_colaborador)}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <Avatar className="size-12">
-                    <AvatarImage src={(c as any).foto_url ?? (c as any).avatar ?? undefined} alt="" />
-                    <AvatarFallback className="text-[0px]">
-                      {inferGenderFromName(c.nome) === 'Female' ? (
-                        <span className="text-pink-600">
-                          <FemaleAvatarIcon />
-                        </span>
-                      ) : (
-                        <span className="text-blue-600">
-                          <MaleAvatarIcon />
-                        </span>
+            <button key={c.id_colaborador} className="group relative flex flex-col rounded-xl border bg-card p-4 text-left transition hover:bg-accent/50 cursor-pointer" onClick={() => setSelectedId(c.id_colaborador)}>
+              <ItemGroup>
+                <ItemHeader>
+                  <ItemTitle>
+                    <ItemMedia variant="image">
+                      <img src={(c as any).foto_url ?? (c as any).avatar ?? ''} alt="" />
+                    </ItemMedia>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="truncate font-semibold">{c.nome} {c.sobrenome}</span>
+                      {String(c.id_colaborador) === (user?.id ?? '') && (
+                        <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px]">Você</span>
                       )}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <div className="font-semibold truncate">{c.nome} {c.sobrenome}</div>
-                    <div className="text-xs text-muted-foreground truncate">{c.cargo?.nome_cargo ?? '—'}</div>
-                    <div className="mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px]">{c.equipe?.setor?.nome_setor ?? '—'}</div>
-                  </div>
+                    </div>
+                  </ItemTitle>
+                </ItemHeader>
+                <Item className="mt-2" variant="outline" size="sm">
+                  <ItemContent>
+                    <div className="text-[11px] text-muted-foreground">Cargo</div>
+                    <div className="text-sm font-medium truncate">{c.cargo?.nome_cargo ?? '—'}</div>
+                  </ItemContent>
+                </Item>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <Item variant="outline" size="sm">
+                    <ItemContent>
+                      <div className="text-[11px] text-muted-foreground">Setor</div>
+                      <div className="text-sm font-medium truncate">{c.equipe?.setor?.nome_setor ?? '—'}</div>
+                    </ItemContent>
+                  </Item>
+                  <Item variant="outline" size="sm">
+                    <ItemContent>
+                      <div className="text-[11px] text-muted-foreground">Equipe</div>
+                      <div className="text-sm font-medium truncate">{c.equipe?.nome_equipe ?? '—'}</div>
+                    </ItemContent>
+                  </Item>
                 </div>
-                <div className="mt-3 grid gap-1 text-xs text-muted-foreground">
-                  <div>{(c as any).email ?? '—'}</div>
-                  <div>{c.equipe?.nome_equipe ?? '—'}</div>
-                  <div>{c.equipe?.setor?.nome_setor ?? '—'}</div>
-                </div>
-              </CardContent>
-            </Card>
+                <Item className="mt-2" variant="outline" size="sm">
+                  <ItemContent>
+                    <div className="text-[11px] text-muted-foreground">Email</div>
+                    <div className="text-sm font-medium truncate">{(c as any).email ?? '—'}</div>
+                  </ItemContent>
+                </Item>
+              </ItemGroup>
+            </button>
           ))}
         </div>
       )}

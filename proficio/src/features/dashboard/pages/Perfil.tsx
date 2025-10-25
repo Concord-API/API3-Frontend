@@ -50,7 +50,7 @@ export function Perfil() {
   const { user } = useAuth()
   const [editMode] = useState(true)
   const [skills, setSkills] = useState<string[]>([])
-  const [skillItems, setSkillItems] = useState<{ id: number; nome: string; ordem: number }[]>([])
+  const [skillItems, setSkillItems] = useState<{ id: number; nome: string; ordem: number; level?: number }[]>([])
   const [profileEmail, setProfileEmail] = useState<string>('')
   const [profileName, setProfileName] = useState<string>('')
   const [profileCargo, setProfileCargo] = useState<string>('')
@@ -62,6 +62,7 @@ export function Perfil() {
   const [draftSkills, setDraftSkills] = useState<string[]>(skills)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [allCompetencias, setAllCompetencias] = useState<{ id_competencia: number; nome: string }[]>([])
+  const [ownCompetencias, setOwnCompetencias] = useState<{ id_competencia: number; nome: string; proeficiencia: number }[]>([])
   // crop state
   const [avatarCropOpen, setAvatarCropOpen] = useState(false)
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null)
@@ -107,21 +108,40 @@ export function Perfil() {
         .filter((cc) => cc.ordem != null && (cc.ordem as number) > 0)
         .slice()
         .sort((a: ColaboradorCompetencia, b: ColaboradorCompetencia) => (a.ordem as number) - (b.ordem as number))
-        .map((cc) => ({ id: cc.id, nome: cc.competencia?.nome ?? '', ordem: (cc.ordem as number) }))
+        .map((cc) => ({ id: cc.id, nome: cc.competencia?.nome ?? '', ordem: (cc.ordem as number), level: (cc.proeficiencia as number) || 0 }))
         .filter((i) => Boolean(i.nome))
       setSkillItems(destacadasFull.slice(0, 4))
       setSkills(destacadasFull.slice(0, 4).map(i => i.nome))
+
+      const own = (data.competencias ?? [])
+        .map((cc) => ({ id_competencia: cc.competencia?.id_competencia as number, nome: cc.competencia?.nome ?? '', proeficiencia: cc.proeficiencia as number }))
+        .filter((c) => Boolean(c.nome) && Number.isFinite(c.id_competencia)) as { id_competencia: number; nome: string; proeficiencia: number }[]
+      setOwnCompetencias(own)
+      setAllCompetencias(own.map(({ id_competencia, nome }) => ({ id_competencia, nome })))
     }
     fetchProfile()
   }, [user?.id])
 
   useEffect(() => {
-    async function fetchCompetencias() {
-      const { data } = await api.get<{ id_competencia: number; nome: string }[]>(`/competencias`)
-      setAllCompetencias(data)
+    async function fetchOwnCompetencias() {
+      if (!user?.id) return
+      const { data } = await api.get<ColaboradorCompetencia[]>(`/colaboradores/${encodeURIComponent(user.id)}/competencias`)
+      const own = (Array.isArray(data) ? data : [])
+        .map((cc: any) => ({ id_competencia: cc?.competencia?.id_competencia, nome: cc?.competencia?.nome, proeficiencia: cc?.proeficiencia }))
+        .filter((c) => Boolean(c.nome) && Number.isFinite(c.id_competencia)) as { id_competencia: number; nome: string; proeficiencia: number }[]
+      setOwnCompetencias(own)
+      setAllCompetencias(own.map(({ id_competencia, nome }) => ({ id_competencia, nome })))
     }
-    fetchCompetencias()
-  }, [])
+    fetchOwnCompetencias()
+  }, [user?.id])
+
+  function getLevelClass(level: number) {
+    if (level === 1) return 'bg-emerald-300 text-emerald-900 border-emerald-400'
+    if (level === 2) return 'bg-emerald-700 text-white border-emerald-800'
+    if (level === 3) return 'bg-orange-500 text-white border-orange-600'
+    if (level === 4) return 'bg-red-500 text-white border-red-600'
+    return 'bg-purple-600 text-white border-purple-700'
+  }
 
   function reorder(list: string[], start: number, end: number) {
     const copy = [...list]
@@ -211,32 +231,14 @@ export function Perfil() {
               </AvatarFallback>
             </Avatar>
             {editMode && (
-              <label className="absolute inset-0 grid place-items-center bg-black/40 rounded-full cursor-pointer group">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0]
-                    if (!file) return
-                    const url = URL.createObjectURL(file)
-                    setPhotoPreview(url)
-                    const reader = new FileReader()
-                    reader.onload = async () => {
-                      const base64 = String(reader.result)
-                      setPhotoPreview(base64)
-                      await api.patch(`/colaboradores/${user!.id}/perfil`, { avatar: base64 })
-                      setProfilePhoto(base64)
-                      setLastUpdated(new Date())
-                      toast.success('Foto de perfil atualizada')
-                    }
-                    reader.readAsDataURL(file)
-                  }}
-                />
-                <span className="flex items-center gap-1 text-xs text-white opacity-100 group-hover:opacity-100">
-                  <Camera className="size-4" /> Editar
-                </span>
-              </label>
+              <button
+                type="button"
+                onClick={() => setAvatarCropOpen(true)}
+                className="absolute -bottom-2 -right-2 grid place-items-center size-8 rounded-full bg-primary text-primary-foreground shadow ring-2 ring-background hover:brightness-95"
+                aria-label="Alterar foto de perfil"
+              >
+                <Camera className="size-4" />
+              </button>
             )}
           </div>
           <div className="min-w-0 flex-1">
@@ -271,15 +273,19 @@ export function Perfil() {
         src={avatarSrc ?? (profilePhoto ?? null)}
         onPick={() => fileInputRef.current?.click()}
         onClose={() => { setAvatarCropOpen(false); setAvatarSrc(null) }}
-        onSave={async (blob) => {
-          const url = URL.createObjectURL(blob)
-          setPhotoPreview(url)
-          await api.patch('/perfil', { id: user!.id, avatar: url })
-          setProfilePhoto(url)
-          setLastUpdated(new Date())
-          toast.success('Foto de perfil atualizada')
-          setAvatarCropOpen(false)
-          setAvatarSrc(null)
+        onSave={(blob) => {
+          const reader = new FileReader()
+          reader.onload = async () => {
+            const base64 = String(reader.result)
+            setPhotoPreview(base64)
+            await api.patch(`/colaboradores/${user!.id}/perfil`, { avatar: base64 })
+            setProfilePhoto(base64)
+            setLastUpdated(new Date())
+            toast.success('Foto de perfil atualizada')
+            setAvatarCropOpen(false)
+            setAvatarSrc(null)
+          }
+          reader.readAsDataURL(blob)
         }}
       />
 
@@ -296,11 +302,11 @@ export function Perfil() {
                   Você ainda não possui competências em destaque. Use "Editar perfil" para selecionar até 4.
                 </div>
               )}
-              {skills.map((s, idx) => {
-                const palette = ['bg-blue-100 text-blue-800 border-blue-200','bg-emerald-100 text-emerald-800 border-emerald-200','bg-amber-100 text-amber-800 border-amber-200','bg-violet-100 text-violet-800 border-violet-200']
-                const cls = palette[idx % palette.length]
+              {skills.map((s) => {
+                const level = ownCompetencias.find((c) => c.nome === s)?.proeficiencia || skillItems.find((i) => i.nome === s)?.level || 0
+                const cls = getLevelClass(level)
                 return (
-                  <span key={s} className={`rounded-md border px-2 py-1 text-xs ${cls}`}>
+                  <span key={s} className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
                     {s}
                   </span>
                 )
@@ -396,7 +402,7 @@ export function Perfil() {
                               .filter((cc) => cc.ordem != null && (cc.ordem as number) > 0)
                               .slice()
                               .sort((a: ColaboradorCompetencia, b: ColaboradorCompetencia) => (a.ordem as number) - (b.ordem as number))
-                              .map((cc) => ({ id: cc.id, nome: cc.competencia?.nome ?? '', ordem: (cc.ordem as number) }))
+                              .map((cc) => ({ id: cc.id, nome: cc.competencia?.nome ?? '', ordem: (cc.ordem as number), level: (cc.proeficiencia as number) || 0 }))
                               .filter((i) => Boolean(i.nome))
                             setSkillItems(atualizadas.slice(0, 4))
                             if ((data as any).atualizado_em) setLastUpdated(new Date((data as any).atualizado_em))
