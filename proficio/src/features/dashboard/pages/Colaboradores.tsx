@@ -107,7 +107,7 @@ export function Colaboradores() {
 
   useEffect(() => {
     if (!user?.id) return
-    api.get<Colaborador>(`/perfil?id=${encodeURIComponent(user.id)}`).then((res) => {
+    api.get<Colaborador>(`/colaboradores/${encodeURIComponent(user.id)}/perfil`).then((res) => {
       setMyTeamId(res.data?.equipe?.id_equipe ?? null)
     })
   }, [user?.id])
@@ -299,11 +299,17 @@ export function Colaboradores() {
             </thead>
             <tbody>
               {filtered.map(c => (
-                <tr key={c.id_colaborador} className="border-t hover:bg-muted/60 transition-colors">
+                <tr key={(c as any).id_colaborador ?? (c as any).id ?? (c as any).email ?? `${c.nome}-${c.sobrenome}`}
+                    className="border-t hover:bg-muted/60 transition-colors">
                   <td className="py-3 pr-4">
                     <div className="flex items-center gap-2">
                       <Avatar className="size-8">
-                        <AvatarImage src={(c as any).foto_url ?? (c as any).avatar ?? undefined} alt="" />
+                        <AvatarImage src={(() => {
+                          const a = ((c as any).foto_url ?? (c as any).avatar) as unknown
+                          if (!a) return undefined as unknown as string
+                          const s = String(a)
+                          return s.startsWith('data:') ? s : `data:image/png;base64,${s}`
+                        })()} alt="" />
                         <AvatarFallback className="text-[0px]">
                           {inferGenderFromName(c.nome) === 'Female' ? (
                             <span className="text-pink-600">
@@ -337,12 +343,18 @@ export function Colaboradores() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map(c => (
-            <button key={c.id_colaborador} className="group relative flex flex-col rounded-xl border bg-card p-4 text-left transition hover:bg-accent/50 cursor-pointer" onClick={() => setSelectedId(c.id_colaborador)}>
+            <button key={(c as any).id_colaborador ?? (c as any).id ?? (c as any).email ?? `${c.nome}-${c.sobrenome}`}
+                    className="group relative flex flex-col rounded-xl border bg-card p-4 text-left transition hover:bg-accent/50 cursor-pointer" onClick={() => setSelectedId(c.id_colaborador)}>
               <ItemGroup>
                 <ItemHeader>
                   <ItemTitle>
                     <ItemMedia variant="image">
-                      <img src={(c as any).foto_url ?? (c as any).avatar ?? ''} alt="" />
+                      <img src={(() => {
+                        const a = ((c as any).foto_url ?? (c as any).avatar) as unknown
+                        if (!a) return ''
+                        const s = String(a)
+                        return s.startsWith('data:') ? s : `data:image/png;base64,${s}`
+                      })()} alt="" />
                     </ItemMedia>
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="truncate font-semibold">{c.nome} {c.sobrenome}</span>
