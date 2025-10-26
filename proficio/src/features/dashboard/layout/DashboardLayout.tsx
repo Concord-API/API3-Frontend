@@ -1,4 +1,5 @@
 import { Outlet, NavLink, useNavigate, useLocation, matchPath } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import {
   DropdownMenu,
@@ -34,11 +35,33 @@ import { Roles } from '@/shared/constants/roles'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/shared/components/ui/breadcrumb'
 import ThemeModeToggle from '@/shared/components/ThemeModeToggle'
 import logoUrl from '@/assets/logo.svg'
+import { api } from '@/shared/lib/api'
 
 export function DashboardLayout() {
   const { logout, user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [avatar, setAvatar] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    if (!user?.id) {
+      setAvatar(undefined)
+      return
+    }
+    ;(async () => {
+      try {
+        const res = await api.get<any>(`/colaboradores/${encodeURIComponent(user.id)}/perfil`)
+        const vm: any = res.data
+        const normalize = (s?: string | null) => {
+          if (!s) return undefined as unknown as string
+          return s.startsWith('data:') ? s : `data:image/png;base64,${s}`
+        }
+        setAvatar(normalize(vm?.avatar))
+      } catch {
+        setAvatar(undefined)
+      }
+    })()
+  }, [user?.id])
 
   function handleLogout() {
     logout()
@@ -141,7 +164,7 @@ export function DashboardLayout() {
             <DropdownMenuTrigger asChild>
               <button className="w-full flex items-center gap-2 rounded-md border px-2 py-2 text-left hover:bg-accent cursor-pointer group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0 group-data-[collapsible=icon]:hover:bg-transparent">
                 <Avatar className="size-7 group-data-[collapsible=icon]:size-9">
-                  <AvatarImage src={undefined} alt={user?.name ?? 'Usuário'} />
+                  <AvatarImage src={avatar ?? undefined} alt={user?.name ?? 'Usuário'} />
                   <AvatarFallback>{user?.name?.[0] ?? 'U'}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
@@ -154,7 +177,7 @@ export function DashboardLayout() {
               <DropdownMenuLabel>
                 <div className="flex items-center gap-2">
                   <Avatar className="size-8">
-                    <AvatarImage src={undefined} alt={user?.name ?? 'Usuário'} />
+                    <AvatarImage src={avatar ?? undefined} alt={user?.name ?? 'Usuário'} />
                     <AvatarFallback>{user?.name?.[0] ?? 'U'}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">

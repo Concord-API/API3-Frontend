@@ -55,6 +55,7 @@ export function Equipes() {
       id_setor: vm?.id_setor ?? vm?.setorId ?? vm?.setor?.id_setor,
       status: vm?.status ?? true,
       setor: vm?.setor ? { id_setor: vm.setor.id_setor, nome_setor: vm.setor.nome_setor } as any : vm?.setorId ? ({ id_setor: vm.setorId } as any) : undefined,
+      colaboradoresCount: vm?.colaboradoresCount ?? vm?.colaboradores ?? 0,
     } as any
   }
 
@@ -415,7 +416,7 @@ export function Equipes() {
                     <Item variant="outline" size="sm">
                       <ItemContent>
                         <div className="text-[11px] text-muted-foreground">Colaboradores</div>
-                        <div className="text-lg font-semibold">{colaboradores.filter(c => (c.id_equipe ?? (c as any).equipe?.id_equipe) === eq.id_equipe).length}</div>
+                        <div className="text-lg font-semibold">{(eq as any).colaboradoresCount ?? colaboradores.filter(c => (c.id_equipe ?? (c as any).equipe?.id_equipe) === eq.id_equipe).length}</div>
                       </ItemContent>
                     </Item>
                   </div>
@@ -507,7 +508,7 @@ export function Equipes() {
                     <Item variant="outline" size="sm">
                       <ItemContent>
                         <div className="text-[11px] text-muted-foreground">Colaboradores</div>
-                        <div className="text-lg font-semibold">{colaboradores.filter(c => (c.id_equipe ?? (c as any).equipe?.id_equipe) === eq.id_equipe).length}</div>
+                        <div className="text-lg font-semibold">{(eq as any).colaboradoresCount ?? colaboradores.filter(c => (c.id_equipe ?? (c as any).equipe?.id_equipe) === eq.id_equipe).length}</div>
                       </ItemContent>
                     </Item>
                   </div>

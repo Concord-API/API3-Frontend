@@ -117,10 +117,22 @@ export function Colaboradores() {
     let base = items
 
     if (user?.role === Roles.Gestor) {
-      if (myTeamId != null) base = base.filter(c => (c.equipe?.id_equipe ?? (c as any).id_equipe) === myTeamId)
+      if (myTeamId != null) base = base.filter(c => (
+        (c as any).idEquipe ??
+        c.equipe?.id_equipe ??
+        (c as any).id_equipe
+      ) === myTeamId)
     } else {
-      if (selectedSetor !== 'all') base = base.filter(c => (c.equipe?.setor?.id_setor ?? (c as any).id_setor) === selectedSetor)
-      if (selectedEquipe !== 'all') base = base.filter(c => (c.equipe?.id_equipe ?? (c as any).id_equipe) === selectedEquipe)
+      if (selectedSetor !== 'all') base = base.filter(c => (
+        (c as any).idSetor ??
+        c.equipe?.setor?.id_setor ??
+        (c as any).id_setor
+      ) === selectedSetor)
+      if (selectedEquipe !== 'all') base = base.filter(c => (
+        (c as any).idEquipe ??
+        c.equipe?.id_equipe ??
+        (c as any).id_equipe
+      ) === selectedEquipe)
     }
 
     if (!t) return base
@@ -324,16 +336,22 @@ export function Colaboradores() {
                       </Avatar>
                       <div className="min-w-0 flex items-center gap-2">
                         <div className="font-medium truncate">{c.nome} {c.sobrenome}</div>
-                        {String(c.id_colaborador) === (user?.id ?? '') && (
+                        {String(((c as any).id_colaborador ?? (c as any).id)) === (user?.id ?? '') && (
                           <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px]">Você</span>
                         )}
                       </div>
                     </div>
                   </td>
-                  <td className="py-3 pr-4">{c.cargo?.nome_cargo ?? '—'}</td>
+                  <td className="py-3 pr-4">{(c as any).cargoNome ?? c.cargo?.nome_cargo ?? '—'}</td>
                   <td className="py-3 pr-4">{(c as any).email ?? '—'}</td>
                   <td className="py-3 pr-2 text-right">
-                    <Button size="sm" variant="outline" onClick={() => setSelectedId(c.id_colaborador)}>Ver perfil</Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setSelectedId(((c as any).id_colaborador ?? (c as any).id) as number)}
+                    >
+                      Ver perfil
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -343,8 +361,11 @@ export function Colaboradores() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map(c => (
-            <button key={(c as any).id_colaborador ?? (c as any).id ?? (c as any).email ?? `${c.nome}-${c.sobrenome}`}
-                    className="group relative flex flex-col rounded-xl border bg-card p-4 text-left transition hover:bg-accent/50 cursor-pointer" onClick={() => setSelectedId(c.id_colaborador)}>
+            <button
+              key={(c as any).id_colaborador ?? (c as any).id ?? (c as any).email ?? `${c.nome}-${c.sobrenome}`}
+              className="group relative flex flex-col rounded-xl border bg-card p-4 text-left transition hover:bg-accent/50 cursor-pointer"
+              onClick={() => setSelectedId(((c as any).id_colaborador ?? (c as any).id) as number)}
+            >
               <ItemGroup>
                 <ItemHeader>
                   <ItemTitle>
@@ -358,7 +379,7 @@ export function Colaboradores() {
                     </ItemMedia>
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="truncate font-semibold">{c.nome} {c.sobrenome}</span>
-                      {String(c.id_colaborador) === (user?.id ?? '') && (
+                      {String(((c as any).id_colaborador ?? (c as any).id)) === (user?.id ?? '') && (
                         <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px]">Você</span>
                       )}
                     </div>
@@ -367,7 +388,7 @@ export function Colaboradores() {
                 <Item className="mt-2" variant="outline" size="sm">
                   <ItemContent>
                     <div className="text-[11px] text-muted-foreground">Cargo</div>
-                    <div className="text-sm font-medium truncate">{c.cargo?.nome_cargo ?? '—'}</div>
+                    <div className="text-sm font-medium truncate">{(c as any).cargoNome ?? c.cargo?.nome_cargo ?? '—'}</div>
                   </ItemContent>
                 </Item>
                 <div className="grid grid-cols-2 gap-2 mt-2">
