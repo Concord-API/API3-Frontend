@@ -106,13 +106,21 @@ export function Competencias() {
     const allList = Array.isArray(allRes.data) ? allRes.data : []
     const normalizedAll = allList.map((c: any) => ({
       ...c,
+      id_competencia: c.id ?? c.id_competencia,
       tipo: normalizeTipo(c?.tipo),
     })) as Competencia[]
     const mineList = Array.isArray(mineRes.data) ? mineRes.data : []
-    const normalizedMine = mineList.map((uc: any) => ({
-      ...uc,
-      competencia: uc?.competencia ? { ...uc.competencia, tipo: normalizeTipo(uc.competencia.tipo) } : uc?.competencia,
-    })) as UserCompetenciaItem[]
+    const normalizedMine = mineList.map((uc: any) => {
+      const hasNested = uc && typeof uc === 'object' && uc.competencia
+      const competencia = hasNested
+        ? { ...uc.competencia, tipo: normalizeTipo(uc.competencia.tipo) }
+        : { id_competencia: uc.id, nome: uc.nome, tipo: normalizeTipo(uc.tipo) }
+      return {
+        ...uc,
+        id_competencia: hasNested ? (uc.id_competencia ?? competencia.id_competencia) : competencia.id_competencia,
+        competencia,
+      }
+    }) as UserCompetenciaItem[]
     setAllCompetencias(normalizedAll)
     setUserCompetencias(normalizedMine)
   }
@@ -128,11 +136,12 @@ export function Competencias() {
       let comp = selected
       if (!comp) {
         // cria se não existe
-        const create = await api.post<Competencia>('/competencias', { nome: query.trim(), tipo: newType === 0 ? 'HARD' : 'SOFT' })
-        comp = create.data
+        const create = await api.post('/competencias', { nome: query.trim(), tipo: newType })
+        const created = create.data as any
+        comp = { id_competencia: created.id, nome: created.nome, tipo: normalizeTipo(created.tipo) } as Competencia
       }
       await api.patch(`/colaboradores/${encodeURIComponent(user.id)}/competencias`, {
-        competencias: [{ id_competencia: comp!.id_competencia, proeficiencia: newLevel }],
+        items: [{ competenciaId: comp!.id_competencia, proeficiencia: newLevel }],
       })
       setQuery('')
       setSelected(null)
@@ -415,7 +424,7 @@ export function Competencias() {
                 if (!user?.id || !editItem) return
                 setLoading(true)
                 try {
-                  await api.delete(`/colaboradores/${encodeURIComponent(user.id)}/competencias`, { data: { id_item: editItem.id } })
+                  await api.delete(`/colaboradores/${encodeURIComponent(user.id)}/competencias/${encodeURIComponent(editItem.id)}`)
                   await loadData()
                   toast.success('Competência removida')
                   setEditOpen(false)
@@ -432,8 +441,9 @@ export function Competencias() {
                 if (!user?.id || !editItem) return
                 setLoading(true)
                 try {
+                  const compId = (editItem.competencia?.id_competencia ?? editItem.id_competencia ?? editItem.id)
                   await api.patch(`/colaboradores/${encodeURIComponent(user.id)}/competencias`, {
-                    competencias: [{ id: editItem.id, id_competencia: editItem.id_competencia, proeficiencia: editLevel }],
+                    items: [{ competenciaId: compId, proeficiencia: editLevel }],
                   })
                   await loadData()
                   toast.success('Proeficiência atualizada')
