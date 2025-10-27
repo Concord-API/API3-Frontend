@@ -4,7 +4,7 @@ import { Button } from '@/shared/components/ui/button'
 // removed unused Card imports after redesign
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { api } from '@/shared/lib/api'
-import type { Colaborador, Setor, Equipe } from '@/shared/types'
+import type { Colaborador, Setor, Equipe, Cargo } from '@/shared/types'
 import { List, LayoutGrid, Plus } from 'lucide-react'
 import { CollaboratorProfileModal } from '@/features/dashboard/components/CollaboratorProfileModal'
 import { useAuth } from '@/features/auth/hooks/useAuth'
@@ -18,6 +18,7 @@ import { Label } from '@/shared/components/ui/label'
 import { toast } from 'sonner'
 import { Item, ItemContent, ItemGroup, ItemHeader, ItemMedia, ItemTitle } from '@/shared/components/ui/item'
 import { Skeleton } from '@/shared/components/ui/skeleton'
+import { AvatarEditorModal } from '@/features/dashboard/components/AvatarEditorModal'
 
 type Gender = 'Male' | 'Female'
 
@@ -73,6 +74,7 @@ export function Colaboradores() {
   const [myTeamId, setMyTeamId] = useState<number | null>(null)
   const [setores, setSetores] = useState<Setor[]>([])
   const [equipes, setEquipes] = useState<Equipe[]>([])
+  const [cargos, setCargos] = useState<Cargo[]>([])
   const [selectedSetor, setSelectedSetor] = useState<number | 'all'>(isFinite(filterSetorFromUrl) ? filterSetorFromUrl : 'all')
   const [selectedEquipe, setSelectedEquipe] = useState<number | 'all'>(isFinite(filterEquipeFromUrl) ? filterEquipeFromUrl : 'all')
   const [showSetor, setShowSetor] = useState(false)
@@ -86,7 +88,24 @@ export function Colaboradores() {
   const [novoSobrenome, setNovoSobrenome] = useState('')
   const [novoEmail, setNovoEmail] = useState('')
   const [novoEquipe, setNovoEquipe] = useState<number | 'none'>('none')
+  const [novoRole, setNovoRole] = useState<'Diretor' | 'Gestor' | 'Colaborador'>('Colaborador')
+  const [novoCargo, setNovoCargo] = useState<number | ''>('')
+  const [novoSetorFiltro, setNovoSetorFiltro] = useState<number | ''>('')
+  const [novoSenha, setNovoSenha] = useState('')
+  const [novoGenero, setNovoGenero] = useState<'Masculino' | 'Feminino' | ''>('')
   const [saving, setSaving] = useState(false)
+  const [newAvatarOpen, setNewAvatarOpen] = useState(false)
+  const [newAvatarSrc, setNewAvatarSrc] = useState<string | null>(null)
+  const [newAvatarBase64, setNewAvatarBase64] = useState<string | null>(null)
+  const newAvatarInputRef = useRef<HTMLInputElement | null>(null)
+
+  function generateRandomPassword() {
+    const base = 'trocar'
+    const pick = Math.floor(Math.random() * 3)
+    if (pick === 0) return base + Math.floor(Math.random() * 999 + 1)
+    if (pick === 1) return base + '!' + Math.floor(Math.random() * 9 + 1)
+    return base + Math.floor(Math.random() * 9 + 1)
+  }
   const [initialLoading, setInitialLoading] = useState(true)
 
   useEffect(() => {
@@ -105,16 +124,37 @@ export function Colaboradores() {
     setInitialLoading(true)
     Promise.all([
       api.get<Colaborador[]>('/colaboradores'),
-      api.get<Setor[]>('/setores'),
-      api.get<Equipe[]>('/equipes'),
+      api.get<any[]>('/setores'),
+      api.get<any[]>('/equipes?status=all'),
+      api.get<Cargo[]>('/cargos'),
     ])
-      .then(([c, s, e]) => {
+      .then(([c, s, e, cg]) => {
         setItems(c.data)
-        setSetores(s.data as any)
-        setEquipes(e.data as any)
+        const mappedSetores: Setor[] = (s.data || []).map((vm: any) => ({
+          id_setor: vm.id ?? vm.id_setor,
+          nome_setor: vm.nome ?? vm.nome_setor,
+          desc_setor: vm.descricao ?? vm.desc_setor,
+          status: vm.status ?? true,
+          id_diretor: vm.diretorId ?? vm.id_diretor,
+        }))
+        setSetores(mappedSetores)
+        const mappedEquipes: Equipe[] = (e.data || []).map((vm: any) => ({
+          id_equipe: vm.id ?? vm.id_equipe,
+          nome_equipe: vm.nome ?? vm.nome_equipe,
+          id_setor: vm.setorId ?? vm.id_setor,
+          status: vm.status ?? true,
+          setor: vm.setor ?? undefined,
+        }))
+        setEquipes(mappedEquipes)
+        setCargos(cg.data as any)
       })
       .finally(() => setInitialLoading(false))
   }, [])
+
+  useEffect(() => {
+    // reset equipe selecionada quando filtro de setor muda
+    setNovoEquipe('none')
+  }, [novoSetorFiltro])
 
   useEffect(() => {
     if (!user?.id) return
@@ -200,7 +240,7 @@ export function Colaboradores() {
         <div className="w-full max-w-sm">
           <Input placeholder="Buscar colaborador..." value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
-        {user?.role === Roles.Diretor && (
+        {(user?.role === Roles.Diretor || user?.role === Roles.Gestor) && (
           <>
             {/* Combobox Setor */}
             <div className="relative" ref={setorRef}>
@@ -253,41 +293,124 @@ export function Colaboradores() {
           </>
         )}
         <div className="ml-auto flex items-center gap-2">
-          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+          <Dialog open={addOpen} onOpenChange={(v) => { setAddOpen(v); if (!v) { setNewAvatarBase64(null); setNewAvatarSrc(null) } else { setNovoSenha(generateRandomPassword()) } }}>
             <DialogTrigger asChild>
               <Button size="icon" className="fixed bottom-6 right-6 h-10 p-4 w-auto rounded-lg   shadow-lg">
                 <Plus className="size-5" />
                 <p>Novo colaborador</p>
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[720px]">
               <DialogHeader>
                 <DialogTitle>Novo colaborador</DialogTitle>
               </DialogHeader>
-              <div className="grid gap-3 py-2">
-                <div className="grid gap-1">
-                  <Label htmlFor="nome-colab">Nome</Label>
-                  <Input id="nome-colab" value={novoNome} onChange={(e) => setNovoNome(e.target.value)} />
+              <div className="grid gap-4 py-2 md:grid-cols-[220px_1fr]">
+                <div className="space-y-2">
+                  <div className="text-xs text-muted-foreground">Foto de perfil (opcional)</div>
+                  <div className="grid place-items-center rounded-md border border-dashed bg-muted/40 px-3 py-6 text-center cursor-pointer hover:bg-muted/60"
+                    onClick={() => newAvatarInputRef.current?.click()}>
+                    <div className="text-sm text-muted-foreground">Clique para selecionar</div>
+                    <div className="text-xs text-muted-foreground">PNG ou JPG até 5MB</div>
+                  </div>
+                  {newAvatarBase64 && (
+                    <img src={newAvatarBase64} alt="Prévia" className="mt-2 h-24 w-24 rounded-full object-cover mx-auto" />
+                  )}
+                  <input ref={newAvatarInputRef} type="file" accept="image/*" className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      if (!f) return
+                      const url = URL.createObjectURL(f)
+                      setNewAvatarSrc(url)
+                      setNewAvatarOpen(true)
+                    }}
+                  />
                 </div>
-                <div className="grid gap-1">
-                  <Label htmlFor="sobrenome-colab">Sobrenome</Label>
-                  <Input id="sobrenome-colab" value={novoSobrenome} onChange={(e) => setNovoSobrenome(e.target.value)} />
-                </div>
-                <div className="grid gap-1">
-                  <Label htmlFor="email-colab">Email</Label>
-                  <Input id="email-colab" type="email" value={novoEmail} onChange={(e) => setNovoEmail(e.target.value)} />
-                </div>
-                <div className="grid gap-1">
-                  <Label>Equipe</Label>
-                  <div className="relative">
+                <div className="grid gap-3">
+                  <div className="grid gap-1 md:grid-cols-2 md:gap-3">
+                    <div className="grid gap-1">
+                      <Label htmlFor="nome-colab">Nome *</Label>
+                      <Input id="nome-colab" value={novoNome} onChange={(e) => setNovoNome(e.target.value)} />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label htmlFor="sobrenome-colab">Sobrenome</Label>
+                      <Input id="sobrenome-colab" value={novoSobrenome} onChange={(e) => setNovoSobrenome(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="email-colab">Email *</Label>
+                    <Input id="email-colab" type="email" value={novoEmail} onChange={(e) => setNovoEmail(e.target.value)} />
+                  </div>
+                  <div className="grid gap-1 md:grid-cols-3 md:gap-3">
+                    <div className="grid gap-1">
+                      <Label htmlFor="senha-colab">Senha *</Label>
+                      <Input id="senha-colab" type="text" value={novoSenha} readOnly />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label>Role *</Label>
+                      <select
+                        className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                        value={novoRole}
+                        onChange={(e) => setNovoRole(e.target.value as any)}
+                      >
+                        {(user?.role === Roles.Diretor ? (['Diretor','Gestor','Colaborador'] as const) : (['Colaborador'] as const)).map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid gap-1">
+                      <Label>Gênero</Label>
+                      <select
+                        className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                        value={novoGenero}
+                        onChange={(e) => setNovoGenero(e.target.value as any)}
+                      >
+                        <option value="">—</option>
+                        <option value="Masculino">Masculino</option>
+                        <option value="Feminino">Feminino</option>
+                      </select>
+                    </div>
+                  </div>
+                  {/* Setor filtro em linha curta */}
+                  <div className="grid gap-1">
+                    <Label>Setor (filtro)</Label>
+                    <select
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      value={novoSetorFiltro === '' ? '' : String(novoSetorFiltro)}
+                      onChange={(e) => setNovoSetorFiltro(e.target.value ? Number(e.target.value) : '')}
+                    >
+                      <option value="">Todos</option>
+                      {setores.map(s => (
+                        <option key={s.id_setor} value={s.id_setor}>{s.nome_setor}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Equipe - campo longo ocupa a linha inteira */}
+                  <div className="grid gap-1">
+                    <Label>Equipe *</Label>
                     <select
                       className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                       value={novoEquipe === 'none' ? '' : String(novoEquipe)}
                       onChange={(e) => setNovoEquipe(e.target.value ? Number(e.target.value) : 'none')}
                     >
                       <option value="">Selecione uma equipe</option>
-                      {equipes.map(eq => (
+                      {(novoSetorFiltro === '' ? equipes : equipes.filter(eq => eq.id_setor === novoSetorFiltro)).map(eq => (
                         <option key={eq.id_equipe} value={eq.id_equipe}>{eq.nome_equipe}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Cargo - campo longo ocupa a linha inteira (sem filtro por setor) */}
+                  <div className="grid gap-1">
+                    <Label>Cargo *</Label>
+                    <select
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      value={novoCargo === '' ? '' : String(novoCargo)}
+                      onChange={(e) => setNovoCargo(e.target.value ? Number(e.target.value) : '')}
+                    >
+                      <option value="">Selecione um cargo</option>
+                      {cargos.map(c => (
+                        <option key={c.id_cargo} value={c.id_cargo}>{c.nome_cargo}</option>
                       ))}
                     </select>
                   </div>
@@ -295,33 +418,45 @@ export function Colaboradores() {
               </div>
               <DialogFooter>
                 <Button
-                  disabled={saving || novoNome.trim().length === 0 || !novoEmail.trim() || novoEquipe === 'none'}
+                  disabled={saving || novoNome.trim().length === 0 || !novoEmail.trim() || novoEquipe === 'none' || !novoSenha.trim() || novoCargo === '' || (user?.role === Roles.Gestor && novoRole !== 'Colaborador')}
                   onClick={async () => {
                     const nome = novoNome.trim()
-                    const sobrenome = novoSobrenome.trim()
+                    const sobrenome = (novoSobrenome.trim() || '-')
                     const email = novoEmail.trim()
-                    if (!nome || !email || novoEquipe === 'none') return
+                    if (!nome || !email || novoEquipe === 'none' || !novoSenha.trim()) return
                     setSaving(true)
                     try {
-                      const payload: Partial<Colaborador> = {
+                      const payload: any = {
                         nome,
                         sobrenome,
                         email,
-                        id_equipe: novoEquipe as number,
+                        idEquipe: novoEquipe as number,
                         status: true as any,
-                        role: Roles.Colaborador as any,
-                        senha: '12345678' as any,
-                        genero: true as any,
-                        id_cargo: 1 as any,
+                        role: novoRole as any,
+                        senha: novoSenha as any,
+                        genero: (novoGenero || undefined) as any,
+                        idCargo: (novoCargo as number),
                       }
                       const { data } = await api.post<Colaborador>('/colaboradores', payload)
-                      setItems((prev) => [...prev, data])
+                      let created = data
+                      // se tiver avatar, salva depois
+                      if (newAvatarBase64) {
+                        try {
+                          const idNew = (created as any)?.id ?? (created as any)?.id_colaborador
+                          if (idNew) await api.patch(`/colaboradores/${encodeURIComponent(idNew)}/perfil`, { avatar: newAvatarBase64 })
+                        } catch {}
+                      }
+                      setItems((prev) => [...prev, created])
                       toast.success('Colaborador criado')
                       setAddOpen(false)
                       setNovoNome('')
                       setNovoSobrenome('')
                       setNovoEmail('')
                       setNovoEquipe('none')
+                      setNovoRole('Colaborador')
+                      setNovoSenha(generateRandomPassword())
+                      setNovoGenero('')
+                      setNewAvatarBase64(null)
                     } finally {
                       setSaving(false)
                     }
@@ -473,6 +608,26 @@ export function Colaboradores() {
       )}
 
       <CollaboratorProfileModal idColaborador={selectedId} onClose={() => setSelectedId(null)} />
+
+      <AvatarEditorModal
+        open={newAvatarOpen}
+        src={newAvatarSrc}
+        onPick={() => newAvatarInputRef.current?.click()}
+        onClose={() => { setNewAvatarOpen(false); setNewAvatarSrc(null) }}
+        onSave={(blob) => {
+          const reader = new FileReader()
+          reader.onload = async () => {
+            const base64 = String(reader.result)
+            setNewAvatarBase64(base64)
+            setNewAvatarOpen(false)
+            setNewAvatarSrc(null)
+          }
+          reader.readAsDataURL(blob)
+        }}
+      />
+
+      {/* util local */}
+      {null as any}
     </div>
   )
 }
