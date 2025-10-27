@@ -58,13 +58,35 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
 
   useEffect(() => {
     if (!currentId) return
-    api.get(`/colaborador?id_colaborador=${currentId}`).then((res) => setData(res.data))
+    api.get(`/colaboradores/${encodeURIComponent(currentId)}/perfil`).then((res) => {
+      const vm: any = res.data
+      const normalize = (s?: string | null) => {
+        if (!s) return undefined as unknown as string
+        return s.startsWith('data:') ? s : `data:image/png;base64,${s}`
+      }
+      if (vm) {
+        vm.avatar = normalize(vm.avatar)
+        vm.capa = normalize(vm.capa)
+      }
+      setData(vm)
+    })
   }, [currentId])
 
   useEffect(() => {
-    if (!idColaborador) return
-    api.get<Colaborador[]>('/colaboradores').then((res) => setTeam(res.data))
-  }, [idColaborador])
+    // Busca todos os colaboradores uma vez e normaliza imagens para evitar GET em base64
+    api.get<Colaborador[]>('/colaboradores').then((res) => {
+      const normalize = (s?: string | null) => {
+        if (!s) return undefined as unknown as string
+        return s.startsWith('data:') ? s : `data:image/png;base64,${s}`
+      }
+      const mapped = (res.data ?? []).map((c: any) => ({
+        ...c,
+        avatar: normalize(c?.avatar),
+        capa: normalize(c?.capa),
+      }))
+      setTeam(mapped)
+    })
+  }, [])
 
   const highlightedSkills = useMemo(() => {
     const list = (data?.competencias ?? []).filter((cc) => (cc.ordem ?? 0) > 0)
@@ -84,8 +106,8 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
 
   const teamMembers = useMemo(() => {
     if (!data) return [] as Colaborador[]
-    const teamId = data.equipe?.id_equipe ?? (data as any).id_equipe
-    return team.filter((c) => (c.equipe?.id_equipe ?? (c as any).id_equipe) === teamId)
+    const teamId = data.equipe?.id_equipe ?? (data as any).idEquipe ?? (data as any).id_equipe
+    return team.filter((c) => ((c as any).idEquipe ?? c.equipe?.id_equipe ?? (c as any).id_equipe) === teamId)
   }, [team, data])
 
   const teamManager = useMemo(() => {
@@ -93,16 +115,12 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
   }, [teamMembers])
 
   const currentSetorId = useMemo(() => {
-    return data?.equipe?.setor?.id_setor ?? (data as any)?.id_setor ?? null
+    return data?.equipe?.setor?.id_setor ?? (data as any)?.idSetor ?? (data as any)?.id_setor ?? null
   }, [data])
 
   const teamDirector = useMemo(() => {
     if (!currentSetorId) return null
-    return (
-      team.find(
-        (c) => String((c as any).role) === 'Diretor' && ((c.cargo?.id_setor ?? (c as any).id_setor) === currentSetorId)
-      ) ?? null
-    )
+    return team.find((c) => String((c as any).role) === 'Diretor' && (((c as any).idSetor ?? (c as any).id_setor) === currentSetorId)) ?? null
   }, [team, currentSetorId])
 
   function formatTenure(iso?: string | null) {
@@ -128,10 +146,10 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
     return d.toLocaleDateString()
   }
 
-  if (!idColaborador) return null
+  if (idColaborador == null) return null
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-start md:place-items-center bg-black/50 p-2 md:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-start md:place-items-center bg-black/50 p-2 md:p-4" onClick={onClose} role="dialog" aria-modal="true">
       <Card className="w-full max-w-3xl h-[calc(100vh-2rem)] md:h-[calc(100vh-4rem)] overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <ScrollArea className="h-full">
           <div className="relative">
@@ -185,8 +203,9 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
                         : level === 4
                           ? 'bg-red-500 text-white border-red-600'
                           : 'bg-purple-600 text-white border-purple-700'
+                  const key = (cc as any)?.id ?? `${(cc as any)?.competencia?.id_competencia ?? (cc as any)?.competencia?.id ?? 'c'}_${cc.ordem ?? '0'}`
                   return (
-                    <span key={cc.id} className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
+                    <span key={key} className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
                       {cc.competencia?.nome}
                     </span>
                   )
@@ -247,7 +266,7 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
                       </Avatar>
                       <div className="min-w-0">
                         <div className="text-sm font-medium truncate">{teamDirector ? `${teamDirector.nome} ${teamDirector.sobrenome}` : '—'}</div>
-                        <div className="text-xs text-muted-foreground truncate">{teamDirector?.cargo?.nome_cargo ?? '—'}</div>
+                        <div className="text-xs text-muted-foreground truncate">{((teamDirector as any)?.cargoNome ?? teamDirector?.cargo?.nome_cargo) ?? '—'}</div>
                       </div>
                     </div>
                   </div>
@@ -275,7 +294,7 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
                       </Avatar>
                       <div className="min-w-0">
                         <div className="text-sm font-medium truncate">{teamManager ? `${teamManager.nome} ${teamManager.sobrenome}` : '—'}</div>
-                        <div className="text-xs text-muted-foreground truncate">{teamManager?.cargo?.nome_cargo ?? '—'}</div>
+                        <div className="text-xs text-muted-foreground truncate">{((teamManager as any)?.cargoNome ?? teamManager?.cargo?.nome_cargo) ?? '—'}</div>
                       </div>
                     </div>
                   </div>
@@ -287,8 +306,8 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
                   <div className="flex flex-wrap justify-center gap-3">
                     {teamMembers
                       .filter((m) => String((m as any).role) === 'Colaborador')
-                      .map((m) => (
-                        <button key={m.id_colaborador} className="rounded-lg border p-2 text-left hover:bg-accent/40 transition-colors cursor-pointer" onClick={() => setCurrentId(m.id_colaborador)}>
+                      .map((m, index) => (
+                        <div key={(m as any).id_colaborador ?? (m as any).id ?? index} className="rounded-lg border p-2 text-left hover:bg-accent/40 transition-colors cursor-pointer" onClick={() => setCurrentId(m.id_colaborador)} role="button" tabIndex={0}>
                           <div className="flex items-center gap-2">
                             <Avatar className="size-8">
                               <AvatarImage src={(m as any).avatar ?? undefined} alt="" />
@@ -304,12 +323,12 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
                                 )}
                               </AvatarFallback>
                             </Avatar>
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium truncate">{m.nome} {m.sobrenome}</div>
-                              <div className="text-[11px] text-muted-foreground truncate">{m.cargo?.nome_cargo ?? '—'}</div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{m.nome} {m.sobrenome}</div>
+                            <div className="text-[11px] text-muted-foreground truncate">{((m as any).cargoNome ?? m.cargo?.nome_cargo) ?? '—'}</div>
                             </div>
                           </div>
-                        </button>
+                        </div>
                     ))}
                   </div>
                 </div>

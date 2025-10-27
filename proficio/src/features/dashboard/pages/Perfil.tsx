@@ -10,6 +10,8 @@ import type { Colaborador, ColaboradorCompetencia } from '@/shared/types'
 import { SquarePen, GripVertical, X, Camera } from 'lucide-react'
 import { toast } from 'sonner'
 import { AvatarEditorModal } from '@/features/dashboard/components/AvatarEditorModal'
+import { CoverEditorModal } from '@/features/dashboard/components/CoverEditorModal'
+import { Skeleton } from '@/shared/components/ui/skeleton'
 
 type Gender = 'Male' | 'Female'
 
@@ -49,6 +51,7 @@ function inferGenderFromName(name: string | undefined): Gender {
 export function Perfil() {
   const { user } = useAuth()
   const [editMode] = useState(true)
+  const [profileLoading, setProfileLoading] = useState(true)
   const [skills, setSkills] = useState<string[]>([])
   const [skillItems, setSkillItems] = useState<{ id: number; nome: string; ordem: number; level?: number }[]>([])
   const [profileEmail, setProfileEmail] = useState<string>('')
@@ -67,6 +70,9 @@ export function Perfil() {
   const [avatarCropOpen, setAvatarCropOpen] = useState(false)
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [coverCropOpen, setCoverCropOpen] = useState(false)
+  const [coverSrc, setCoverSrc] = useState<string | null>(null)
+  const coverInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (drawerOpen) setDraftSkills(skills)
@@ -87,14 +93,16 @@ export function Perfil() {
       if (avatarValue instanceof Blob) {
         setProfilePhoto(URL.createObjectURL(avatarValue))
       } else {
-        setProfilePhoto((avatarValue as string | null) ?? undefined)
+        const s = (avatarValue as string | null) ?? null
+        setProfilePhoto(s ? (s.startsWith('data:') ? s : `data:image/png;base64,${s}`) : undefined)
       }
 
       const capaValue = (data as any).capa as unknown
       if (capaValue instanceof Blob) {
         setProfileCover(URL.createObjectURL(capaValue))
       } else {
-        setProfileCover((capaValue as string | null) ?? undefined)
+        const s = (capaValue as string | null) ?? null
+        setProfileCover(s ? (s.startsWith('data:') ? s : `data:image/png;base64,${s}`) : undefined)
       }
 
       
@@ -118,6 +126,7 @@ export function Perfil() {
         .filter((c) => Boolean(c.nome) && Number.isFinite(c.id_competencia)) as { id_competencia: number; nome: string; proeficiencia: number }[]
       setOwnCompetencias(own)
       setAllCompetencias(own.map(({ id_competencia, nome }) => ({ id_competencia, nome })))
+      setProfileLoading(false)
     }
     fetchProfile()
   }, [user?.id])
@@ -186,6 +195,81 @@ export function Perfil() {
     return parts.join(' ')
   }
 
+  if (profileLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="relative h-40 md:h-56 w-full overflow-hidden rounded-xl border">
+          <Skeleton className="h-full w-full" />
+        </div>
+        <Card className="relative -mt-10 px-6 py-5 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="relative -mt-12">
+              <Skeleton className="h-24 w-24 rounded-full" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-7 w-56" />
+              <div className="flex items-center gap-3 flex-wrap">
+                <Skeleton className="h-5 w-24" />
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-4 w-80" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2 items-center">
+                {[...Array(4)].map((_, i) => (
+                  <Skeleton key={i} className="h-5 w-28 rounded-md" />
+                ))}
+                <Skeleton className="h-8 w-8 rounded" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-4 w-40" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-4 w-10" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[...Array(6)].map((_, i) => (
+                <div key={i}>
+                  <Skeleton className="h-3 w-16 mb-1" />
+                  <Skeleton className="h-5 w-48" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="relative h-40 md:h-56 w-full overflow-hidden rounded-xl border">
@@ -196,20 +280,13 @@ export function Perfil() {
         />
         {editMode && (
           <div className="absolute bottom-2 right-2">
-            <input id="upload-cover" type="file" accept="image/*" className="hidden"
-              onChange={async (e) => {
-                const f = e.target.files?.[0]
-                if (!f) return
-                const url = URL.createObjectURL(f)
-                setProfileCover(url)
-                await api.patch('/perfil', { id: user!.id, capa: url })
-                setLastUpdated(new Date())
-                toast.success('Capa atualizada')
-              }}
-            />
-            <label htmlFor="upload-cover" className="rounded-md border bg-background/90 px-2 py-1 text-xs shadow-sm cursor-pointer hover:bg-accent">
+            <button
+              type="button"
+              className="rounded-md border bg-background/90 px-2 py-1 text-xs shadow-sm hover:bg-accent"
+              onClick={() => setCoverCropOpen(true)}
+            >
               Alterar capa
-            </label>
+            </button>
           </div>
         )}
       </div>
@@ -280,10 +357,43 @@ export function Perfil() {
             setPhotoPreview(base64)
             await api.patch(`/colaboradores/${user!.id}/perfil`, { avatar: base64 })
             setProfilePhoto(base64)
+            try { window.dispatchEvent(new CustomEvent('profile-avatar-updated', { detail: base64 })) } catch {}
             setLastUpdated(new Date())
             toast.success('Foto de perfil atualizada')
             setAvatarCropOpen(false)
             setAvatarSrc(null)
+          }
+          reader.readAsDataURL(blob)
+        }}
+      />
+
+      <input
+        ref={coverInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (!f) return
+          const url = URL.createObjectURL(f)
+          setCoverSrc(url)
+        }}
+      />
+      <CoverEditorModal
+        open={coverCropOpen}
+        src={coverSrc ?? (profileCover ?? null)}
+        onPick={() => coverInputRef.current?.click()}
+        onClose={() => { setCoverCropOpen(false); setCoverSrc(null) }}
+        onSave={(blob) => {
+          const reader = new FileReader()
+          reader.onload = async () => {
+            const base64 = String(reader.result)
+            setProfileCover(base64)
+            await api.patch('/perfil', { capa: base64 })
+            setLastUpdated(new Date())
+            toast.success('Capa atualizada')
+            setCoverCropOpen(false)
+            setCoverSrc(null)
           }
           reader.readAsDataURL(blob)
         }}
@@ -405,6 +515,14 @@ export function Perfil() {
                               .map((cc) => ({ id: cc.id, nome: cc.competencia?.nome ?? '', ordem: (cc.ordem as number), level: (cc.proeficiencia as number) || 0 }))
                               .filter((i) => Boolean(i.nome))
                             setSkillItems(atualizadas.slice(0, 4))
+                            if ((data as any).avatar) {
+                              const s = (data as any).avatar as string
+                              setProfilePhoto(s.startsWith('data:') ? s : `data:image/png;base64,${s}`)
+                            }
+                            if ((data as any).capa) {
+                              const s = (data as any).capa as string
+                              setProfileCover(s.startsWith('data:') ? s : `data:image/png;base64,${s}`)
+                            }
                             if ((data as any).atualizado_em) setLastUpdated(new Date((data as any).atualizado_em))
                             toast.success('Competências destacadas atualizadas')
                           } finally {

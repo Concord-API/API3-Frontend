@@ -4,6 +4,7 @@ import type { Colaborador, Equipe, Setor } from '@/shared/types'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
 import { TrendingUp, Users, Building2, Layers, ArrowUpRight, BarChart3, ClipboardCheck, Plus } from 'lucide-react'
+import { Skeleton } from '@/shared/components/ui/skeleton'
 
 export function HomeDiretor() {
   const [setores, setSetores] = useState<Setor[]>([])
@@ -28,6 +29,8 @@ export function HomeDiretor() {
     }
     load()
   }, [])
+
+  
 
   const filteredColabs = useMemo(() => {
     if (setorFilter === 'all') return colaboradores
@@ -117,6 +120,75 @@ export function HomeDiretor() {
     )
   }
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <Skeleton className="h-4 w-16" />
+          {[1,2,3].map((i) => (
+            <Skeleton key={i} className="h-6 w-10 rounded-full" />
+          ))}
+          <div className="ml-4" />
+          {[1,2,3,4].map((i) => (
+            <Skeleton key={`chip-${i}`} className="h-6 w-24 rounded-full" />
+          ))}
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[1,2,3,4].map((i) => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Skeleton className="h-8 w-20" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          {[1,2].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-5 w-44" />
+                <Skeleton className="h-4 w-56" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, idx) => (
+                    <div key={idx} className="flex items-center gap-3">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-2 flex-1" />
+                      <Skeleton className="h-4 w-10" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-9 w-40 rounded-md" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Filtros */}
@@ -133,8 +205,8 @@ export function HomeDiretor() {
           className={`rounded-full px-3 py-1 text-xs border ${setorFilter === 'all' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
           onClick={() => setSetorFilter('all')}
         >Todos</button>
-        {setores.map(s => (
-          <button key={s.id_setor}
+        {setores.map((s, i) => (
+          <button key={s.id_setor ?? `${s.nome_setor}-${i}`}
             className={`rounded-full px-3 py-1 text-xs border ${setorFilter === s.id_setor ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
             onClick={() => setSetorFilter(s.id_setor)}
           >{s.nome_setor}</button>

@@ -32,7 +32,7 @@ export function HomeGestor() {
 
   useEffect(() => {
     if (!user?.id) return
-    api.get(`/perfil?id=${encodeURIComponent(user.id)}`).then((res) => {
+    api.get(`/colaboradores/${encodeURIComponent(user.id)}/perfil`).then((res) => {
       setMyTeamId(res.data?.equipe?.id_equipe ?? null)
     })
   }, [user?.id])
