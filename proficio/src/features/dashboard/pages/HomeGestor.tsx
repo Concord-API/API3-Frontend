@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '@/shared/lib/api'
 import type { Colaborador, Equipe, Setor } from '@/shared/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
-import { Button } from '@/shared/components/ui/button'
-import { Users, Layers, ClipboardCheck, ChevronRight } from 'lucide-react'
+import { Users, Layers, ClipboardCheck } from 'lucide-react'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 
 export function HomeGestor() {
@@ -108,19 +107,6 @@ export function HomeGestor() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Ações Rápidas</CardTitle>
-            <CardDescription>Atalhos do dia a dia</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="outline" className="gap-2"><Users className="size-4" /> Ver colaboradores</Button>
-              <Button variant="outline" className="gap-2"><ChevronRight className="size-4" /> Avaliações pendentes</Button>
-              <Button variant="outline" className="gap-2"><ClipboardCheck className="size-4" /> Aprovar solicitações</Button>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )

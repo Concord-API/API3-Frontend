@@ -1,34 +1,147 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '@/shared/lib/api'
-import type { Colaborador, Equipe, Setor } from '@/shared/types'
+import type { Colaborador, Equipe, Setor, Competencia, ColaboradorCompetencia } from '@/shared/types'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/card'
-import { Button } from '@/shared/components/ui/button'
-import { TrendingUp, Users, Building2, Layers, ArrowUpRight, BarChart3, ClipboardCheck, Plus } from 'lucide-react'
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/shared/components/ui/chart'
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { TrendingUp, Users, Building2, Layers, ArrowUpRight } from 'lucide-react'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 
 export function HomeDiretor() {
   const [setores, setSetores] = useState<Setor[]>([])
   const [equipes, setEquipes] = useState<Equipe[]>([])
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([])
+  const [competencias, setCompetencias] = useState<Competencia[]>([])
+  const [competenciasByColab, setCompetenciasByColab] = useState<Record<number, ColaboradorCompetencia[]>>({})
   const [loading, setLoading] = useState(true)
-  const [monthsRange, setMonthsRange] = useState<3 | 6 | 12>(6)
+  const [monthsRange, setMonthsRange] = useState<6 | 12 | 36>(6)
   const [setorFilter, setSetorFilter] = useState<number | 'all'>('all')
+  const [selectedCompetenciaId, setSelectedCompetenciaId] = useState<number | 'all'>('all')
 
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const [s, e, c] = await Promise.all([
+      const [s, e, c, comps] = await Promise.all([
         api.get<Setor[]>('/setores'),
         api.get<Equipe[]>('/equipes'),
         api.get<Colaborador[]>('/colaboradores'),
+        api.get<Competencia[]>('/competencias'),
       ])
-      setSetores(Array.isArray(s.data) ? s.data : [])
-      setEquipes(Array.isArray(e.data) ? e.data : [])
-      setColaboradores(Array.isArray(c.data) ? c.data : [])
+      const rawSetores = Array.isArray(s.data) ? (s.data as any[]) : []
+      const normSetores: Setor[] = rawSetores.map((x) => ({
+        id_setor: Number(x?.id_setor ?? x?.id ?? x?.idSetor ?? 0),
+        nome_setor: String(x?.nome_setor ?? x?.nome ?? ''),
+        desc_setor: x?.desc_setor ?? x?.descricao ?? null,
+        status: Boolean(x?.status ?? true),
+        id_diretor: x?.id_diretor ?? x?.diretorId ?? null,
+        diretor: undefined,
+      }))
+
+      const rawEquipes = Array.isArray(e.data) ? (e.data as any[]) : []
+      const normEquipes: Equipe[] = rawEquipes.map((x) => ({
+        id_equipe: Number(x?.id_equipe ?? x?.id ?? 0),
+        nome_equipe: String(x?.nome_equipe ?? x?.nome ?? ''),
+        id_setor: Number(x?.id_setor ?? x?.setorId ?? 0),
+        setor: undefined,
+        status: Boolean(x?.status ?? true),
+      }))
+
+      const rawColabs = Array.isArray(c.data) ? (c.data as any[]) : []
+      const normColabs: Colaborador[] = rawColabs.map((x) => ({
+        id_colaborador: Number(x?.id_colaborador ?? x?.id ?? 0),
+        cpf: x?.cpf ?? null,
+        data_nasci: x?.data_nasci ?? x?.dataNascimento ?? null,
+        nome: String(x?.nome ?? ''),
+        sobrenome: String(x?.sobrenome ?? ''),
+        genero: Boolean(x?.genero ?? false),
+        email: String(x?.email ?? ''),
+        senha: String(x?.senha ?? ''),
+        status: Boolean(x?.status ?? true),
+        role: String(x?.role ?? '') as any,
+        avatar: x?.avatar ?? null,
+        capa: x?.capa ?? null,
+        criado_em: x?.criado_em ?? x?.criadoEm ?? null,
+        atualizado_em: x?.atualizado_em ?? x?.atualizadoEm ?? null,
+        id_equipe: Number(x?.id_equipe ?? x?.idEquipe ?? 0),
+        id_cargo: Number(x?.id_cargo ?? x?.idCargo ?? 0),
+        equipe: undefined,
+        cargo: undefined,
+        competencias: undefined,
+      }))
+
+      const rawComps = Array.isArray(comps.data) ? (comps.data as any[]) : []
+      const normComps: Competencia[] = rawComps.map((x) => ({
+        id_competencia: Number(x?.id_competencia ?? x?.id ?? x?.idCompetencia ?? 0),
+        nome: String(x?.nome ?? x?.name ?? ''),
+        tipo: Number(x?.tipo ?? 0) as 0 | 1,
+      }))
+
+      setSetores(normSetores)
+      setEquipes(normEquipes)
+      setColaboradores(normColabs)
+      setCompetencias(normComps)
       setLoading(false)
     }
     load()
   }, [])
+
+  useEffect(() => {
+    async function loadCompetenciasByColab() {
+      if (!colaboradores.length || !competencias.length) return
+      try {
+        const nameToId = new Map<string, number>()
+        for (const c of competencias) nameToId.set(String(c.nome).toLowerCase(), c.id_competencia)
+
+        const pairs = await Promise.all(
+          colaboradores.map(async (col) => {
+            try {
+              const perfil = await api.get<any>(`/colaboradores/${encodeURIComponent(col.id_colaborador)}/perfil`)
+              const raw = Array.isArray(perfil.data?.competencias) ? perfil.data.competencias : []
+              const normalized: ColaboradorCompetencia[] = raw.map((it: any) => ({
+                id: Number(it?.id ?? 0),
+                id_colaborador: Number(col.id_colaborador),
+                id_competencia: Number(it?.id_competencia ?? it?.competencia?.id_competencia ?? 0),
+                proeficiencia: Number(it?.proeficiencia ?? 0),
+                ordem: it?.ordem ?? (null as unknown as number),
+                competencia: competencias.find(c => c.id_competencia === Number(it?.id_competencia ?? it?.competencia?.id_competencia ?? 0)),
+              }))
+              return [col.id_colaborador, normalized] as const
+            } catch {
+              const res = await api.get<any[]>(`/colaboradores/${encodeURIComponent(col.id_colaborador)}/competencias`)
+              const raw = Array.isArray(res.data) ? res.data : []
+              const normalized: ColaboradorCompetencia[] = []
+              for (const it of raw) {
+                const key = String(it?.nome ?? '').toLowerCase()
+                const maybeId: number | undefined = it?.id_competencia ?? nameToId.get(key)
+                if (!maybeId) continue
+                normalized.push({
+                  id: Number(it?.id ?? 0),
+                  id_colaborador: Number(col.id_colaborador),
+                  id_competencia: Number(maybeId),
+                  proeficiencia: Number(it?.proeficiencia ?? 0),
+                  ordem: it?.ordem ?? (null as unknown as number),
+                  competencia: competencias.find(c => c.id_competencia === Number(maybeId)),
+                })
+              }
+              return [col.id_colaborador, normalized] as const
+            }
+          })
+        )
+        const map: Record<number, ColaboradorCompetencia[]> = {}
+        for (const [id, list] of pairs) map[id] = list
+        setCompetenciasByColab(map)
+      } catch {}
+    }
+    loadCompetenciasByColab()
+  }, [colaboradores, competencias])
+  const optionsCompetencias = useMemo(() => (
+    [{ id: 'all' as const, nome: 'Todas' }, ...competencias.map(c => ({ id: c.id_competencia, nome: c.nome }))]
+  ), [competencias])
+
+  function isCompetenciaSelected(id: number | 'all') {
+    return selectedCompetenciaId === id
+  }
+
 
   
 
@@ -72,7 +185,6 @@ export function HomeDiretor() {
       .slice(0, 5)
   }, [equipes, filteredColabs, setorFilter])
 
-  // Simula evolução (últimos 6 períodos) usando criado_em
   const serieEvolucao = useMemo(() => {
     const len = monthsRange
     const buckets = Array.from({ length: len }).map((_, i) => ({ label: `${len - 1 - i}m`, value: 0 }))
@@ -85,6 +197,51 @@ export function HomeDiretor() {
     }
     return buckets
   }, [filteredColabs, monthsRange])
+
+  const coberturaPorCompetencia = useMemo(() => {
+    const total = filteredColabs.length || 1
+    const counts = new Map<number, number>()
+    for (const col of filteredColabs) {
+      const list = competenciasByColab[col.id_colaborador] || []
+      for (const cc of list) {
+        counts.set(cc.id_competencia, (counts.get(cc.id_competencia) ?? 0) + 1)
+      }
+    }
+    const rows = competencias.map((comp) => {
+      const covered = counts.get(comp.id_competencia) ?? 0
+      const pct = Math.round((covered / total) * 100)
+      return { comp, covered, pct }
+    })
+    return rows.sort((a, b) => b.covered - a.covered).slice(0, 10)
+  }, [competencias, competenciasByColab, filteredColabs])
+
+  const distribuicaoProeficiencia = useMemo(() => {
+    const total = filteredColabs.length || 1
+    const buckets: Record<1|2|3|4|5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+    if (selectedCompetenciaId !== 'all') {
+      for (const col of filteredColabs) {
+        const list = competenciasByColab[col.id_colaborador] || []
+        for (const cc of list) {
+          if (cc.id_competencia !== selectedCompetenciaId) continue
+          const v = Math.min(5, Math.max(1, cc.proeficiencia as number)) as 1|2|3|4|5
+          buckets[v] += 1
+        }
+      }
+    }
+    return (Object.keys(buckets) as unknown as Array<1|2|3|4|5>).map((nivel) => ({
+      nivel,
+      qtd: buckets[nivel],
+      pct: Math.round((buckets[nivel] / total) * 100),
+    }))
+  }, [competenciasByColab, filteredColabs, selectedCompetenciaId])
+
+  const evolChartConfig = useMemo(() => ({
+    value: { label: 'Colaboradores', color: 'hsl(var(--primary))' },
+  }), [])
+
+  const profChartConfig = useMemo(() => ({
+    qtd: { label: 'Colaboradores', color: 'hsl(var(--primary))' },
+  }), [])
 
   function sparklinePath(values: number[], width = 120, height = 32, padding = 2) {
     if (values.length === 0) return ''
@@ -194,10 +351,10 @@ export function HomeDiretor() {
       {/* Filtros */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="text-xs text-muted-foreground">Período</div>
-        {[3, 6, 12].map((m) => (
+        {[6, 12, 36].map((m) => (
           <button key={m}
             className={`rounded-full px-3 py-1 text-xs border ${monthsRange === m ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
-            onClick={() => setMonthsRange(m as 3 | 6 | 12)}
+            onClick={() => setMonthsRange(m as 6 | 12 | 36)}
           >{m}m</button>
         ))}
         <div className="ml-4 text-xs text-muted-foreground">Setor</div>
@@ -211,6 +368,16 @@ export function HomeDiretor() {
             onClick={() => setSetorFilter(s.id_setor)}
           >{s.nome_setor}</button>
         ))}
+        <div className="ml-4 text-xs text-muted-foreground">Competência</div>
+        <div className="flex gap-2 overflow-x-auto">
+          {optionsCompetencias.slice(0, 12).map((opt, i) => (
+            <button
+              key={`${String(opt.id)}-${i}`}
+              className={`rounded-full px-3 py-1 text-xs border ${isCompetenciaSelected(opt.id as any) ? 'bg-primary text-primary-foreground' : 'bg-transparent hover:bg-accent'}`}
+              onClick={() => setSelectedCompetenciaId(opt.id as any)}
+            >{opt.nome}</button>
+          ))}
+        </div>
       </div>
 
       {/* KPIs */}
@@ -283,22 +450,58 @@ export function HomeDiretor() {
         </Card>
       </div>
 
-      {/* Ações rápidas */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Métrica: Distribuição e Cobertura de Competências</CardTitle>
+            <CardDescription>Quantos colaboradores possuem cada competência e a cobertura percentual.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <HorizontalBars data={coberturaPorCompetencia.map(({ comp, covered, pct }) => ({ label: `${comp.nome} (${pct}%)`, value: covered }))} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Proficiência por competência selecionada</CardTitle>
+            <CardDescription>Níveis 1 (Iniciante) a 5 (Especialista).</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {selectedCompetenciaId === 'all' ? (
+              <div className="text-sm text-muted-foreground">Selecione uma competência acima para ver a distribuição de níveis.</div>
+            ) : (
+              <ChartContainer config={profChartConfig} className="w-full h-80 aspect-auto text-primary">
+                <BarChart data={distribuicaoProeficiencia} margin={{ left: 12, right: 12, top: 4, bottom: 4 }} barSize={28}>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis dataKey="nivel" tickLine={false} axisLine={false} tickMargin={8} />
+                  <YAxis hide tickLine={false} axisLine={false} />
+                  <ChartTooltip cursor={{ fill: 'hsl(var(--muted))' }} content={<ChartTooltipContent hideLabel />} />
+                  <Bar dataKey="qtd" fill="currentColor" fillOpacity={0.9} radius={[6,6,0,0]} />
+                </BarChart>
+              </ChartContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Ações Rápidas</CardTitle>
-          <CardDescription>Principais funcionalidades do seu perfil</CardDescription>
+          <CardTitle>Evolução de cobertura ao longo do tempo</CardTitle>
+          <CardDescription>Últimos períodos ({monthsRange}m) como proxy de evolução da capacidade.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <Button variant="outline" className="gap-2"><Users className="size-4" /> Ver Equipes</Button>
-            <Button variant="outline" className="gap-2"><Building2 className="size-4" /> Ver Setores</Button>
-            <Button variant="outline" className="gap-2"><ClipboardCheck className="size-4" /> Realizar Avaliação</Button>
-            <Button variant="outline" className="gap-2"><BarChart3 className="size-4" /> Relatórios</Button>
-            <Button variant="outline" className="gap-2"><Plus className="size-4" /> Adicionar Funcionário</Button>
-          </div>
+          <ChartContainer config={evolChartConfig} className="w-full h-96 aspect-auto text-primary">
+            <BarChart data={serieEvolucao} margin={{ left: 12, right: 12, top: 4, bottom: 4 }} barSize={28}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} />
+              <YAxis hide tickLine={false} axisLine={false} />
+              <ChartTooltip cursor={{ fill: 'hsl(var(--muted))' }} content={<ChartTooltipContent hideLabel />} />
+              <Bar dataKey="value" fill="currentColor" fillOpacity={0.9} radius={[6,6,0,0]} />
+            </BarChart>
+          </ChartContainer>
         </CardContent>
       </Card>
+
     </div>
   )
 }
