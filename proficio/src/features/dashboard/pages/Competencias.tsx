@@ -1,17 +1,19 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
-import { Separator } from '@/shared/components/ui/separator'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetDescription, SheetTrigger, SheetClose } from '@/shared/components/ui/sheet'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { api } from '@/shared/lib/api'
 import type { ColaboradorCompetencia, Competencia } from '@/shared/types'
-import { ChevronDown, Check, Trash } from 'lucide-react'
+import { Check, Trash, ChevronDown, Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { ButtonGroup } from '@/shared/components/ui/button-group'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/shared/components/ui/command'
+import { Skeleton } from '@/shared/components/ui/skeleton'
 
 type UserCompetenciaItem = ColaboradorCompetencia & { competencia: Competencia }
 
@@ -47,6 +49,22 @@ export function Competencias() {
   const [queryTable, setQueryTable] = useState('')
   const [filterType, setFilterType] = useState<'ALL' | 'HARD' | 'SOFT'>('ALL')
   const [sortKey, setSortKey] = useState<'nivel-desc' | 'nivel-asc' | 'nome-asc'>('nivel-desc')
+  const [comboOpen, setComboOpen] = useState(false)
+  const comboRef = useRef<HTMLDivElement | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
+
+  useEffect(() => {
+    function onDocMouseDown(e: MouseEvent) {
+      const target = e.target as Node | null
+      if (!comboRef.current || !target) return
+      if (!comboRef.current.contains(target)) {
+        if (selected) setComboOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [selected])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -62,6 +80,15 @@ export function Competencias() {
     return { total, avg: Number(avg.toFixed(1)), hard, soft }
   }, [userCompetencias])
 
+  const levelCounts = useMemo(() => {
+    const counts: Record<1|2|3|4|5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+    for (const uc of userCompetencias) {
+      const v = Math.min(5, Math.max(1, uc.proeficiencia as number)) as 1|2|3|4|5
+      counts[v] += 1
+    }
+    return counts
+  }, [userCompetencias])
+
   const displayed = useMemo(() => {
     const q = queryTable.trim().toLowerCase()
     let items = userCompetencias.filter((uc) => uc.competencia?.nome.toLowerCase().includes(q))
@@ -74,27 +101,39 @@ export function Competencias() {
 
   async function loadData() {
     if (!user?.id) return
-    const [allRes, mineRes] = await Promise.all([
-      api.get('/competencias'),
-      api.get(`/colaboradores/${encodeURIComponent(user.id)}/competencias`),
-    ])
-    const allList = Array.isArray(allRes.data) ? allRes.data : []
-    const normalizedAll = allList.map((c: any) => ({
-      ...c,
-      tipo: normalizeTipo(c?.tipo),
-    })) as Competencia[]
-    const mineList = Array.isArray(mineRes.data) ? mineRes.data : []
-    const normalizedMine = mineList.map((uc: any) => ({
-      ...uc,
-      competencia: uc?.competencia ? { ...uc.competencia, tipo: normalizeTipo(uc.competencia.tipo) } : uc?.competencia,
-    })) as UserCompetenciaItem[]
-    setAllCompetencias(normalizedAll)
-    setUserCompetencias(normalizedMine)
+    setInitialLoading(true)
+    try {
+      const [allRes, mineRes] = await Promise.all([
+        api.get('/competencias'),
+        api.get(`/colaboradores/${encodeURIComponent(user.id)}/competencias`),
+      ])
+      const allList = Array.isArray(allRes.data) ? allRes.data : []
+      const normalizedAll = allList.map((c: any) => ({
+        ...c,
+        id_competencia: c.id ?? c.id_competencia,
+        tipo: normalizeTipo(c?.tipo),
+      })) as Competencia[]
+      const mineList = Array.isArray(mineRes.data) ? mineRes.data : []
+      const normalizedMine = mineList.map((uc: any) => {
+        const hasNested = uc && typeof uc === 'object' && uc.competencia
+        const competencia = hasNested
+          ? { ...uc.competencia, tipo: normalizeTipo(uc.competencia.tipo) }
+          : { id_competencia: uc.id, nome: uc.nome, tipo: normalizeTipo(uc.tipo) }
+        return {
+          ...uc,
+          id_competencia: hasNested ? (uc.id_competencia ?? competencia.id_competencia) : competencia.id_competencia,
+          competencia,
+        }
+      }) as UserCompetenciaItem[]
+      setAllCompetencias(normalizedAll)
+      setUserCompetencias(normalizedMine)
+    } finally {
+      setInitialLoading(false)
+    }
   }
 
   useEffect(() => {
     loadData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
   async function handleAdd() {
@@ -104,11 +143,12 @@ export function Competencias() {
       let comp = selected
       if (!comp) {
         // cria se não existe
-        const create = await api.post<Competencia>('/competencias', { nome: query.trim(), tipo: newType === 0 ? 'HARD' : 'SOFT' })
-        comp = create.data
+        const create = await api.post('/competencias', { nome: query.trim(), tipo: newType })
+        const created = create.data as any
+        comp = { id_competencia: created.id, nome: created.nome, tipo: normalizeTipo(created.tipo) } as Competencia
       }
       await api.patch(`/colaboradores/${encodeURIComponent(user.id)}/competencias`, {
-        competencias: [{ id_competencia: comp!.id_competencia, proeficiencia: newLevel }],
+        items: [{ competenciaId: comp!.id_competencia, proeficiencia: newLevel }],
       })
       setQuery('')
       setSelected(null)
@@ -120,9 +160,56 @@ export function Competencias() {
     }
   }
 
+  if (initialLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[0,1,2,3].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-36" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-20" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader className="gap-3">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-3 w-56 mt-2" />
+              </div>
+              <Skeleton className="h-9 w-24" />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex-1 min-w-48">
+                <Skeleton className="h-9 w-full" />
+              </div>
+              <Skeleton className="h-9 w-20" />
+              <Skeleton className="h-9 w-20" />
+              <Skeleton className="h-9 w-20" />
+              <Skeleton className="h-9 w-24" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {[...Array(6)].map((_, idx) => (
+                <Skeleton key={idx} className="h-10 w-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Total</CardTitle>
@@ -135,7 +222,10 @@ export function Competencias() {
         <Card>
           <CardHeader>
             <CardTitle>Média</CardTitle>
-            <CardDescription>Proeficiência (1 a 5)</CardDescription>
+            <CardDescription>
+              Proeficiência (1 a 5)
+              <span className="ml-2 text-[11px] text-muted-foreground">(visível apenas para você)</span>
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-semibold">{stats.avg}</div>
@@ -148,8 +238,24 @@ export function Competencias() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2 text-sm">
-              <span className="inline-flex items-center rounded-full border px-2 py-0.5">HARD: {stats.hard}</span>
-              <span className="inline-flex items-center rounded-full border px-2 py-0.5">SOFT: {stats.soft}</span>
+              <span className="inline-flex items-center rounded-full border px-2 py-0.5 bg-blue-600 text-white border-blue-700 font-semibold">Hard: {stats.hard}</span>
+              <span className="inline-flex items-center rounded-full border px-2 py-0.5 bg-emerald-600 text-white border-emerald-700 font-semibold">Soft: {stats.soft}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Por nível</CardTitle>
+            <CardDescription>Quantidade por proeficiência</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2 text-sm">
+              <span className="inline-flex items-center rounded-full border px-2 py-0.5 bg-emerald-500 text-white border-emerald-700 font-semibold">{NIVEL_LABEL[1]}: {levelCounts[1]}</span>
+              <span className="inline-flex items-center rounded-full border px-2 py-0.5 bg-emerald-700 text-white border-emerald-800 font-semibold">{NIVEL_LABEL[2]}: {levelCounts[2]}</span>
+              <span className="inline-flex items-center rounded-full border px-2 py-0.5 bg-orange-600 text-white border-orange-700 font-semibold">{NIVEL_LABEL[3]}: {levelCounts[3]}</span>
+              <span className="inline-flex items-center rounded-full border px-2 py-0.5 bg-red-600 text-white border-red-700 font-semibold">{NIVEL_LABEL[4]}: {levelCounts[4]}</span>
+              <span className="inline-flex items-center rounded-full border px-2 py-0.5 bg-purple-700 text-white border-purple-800 font-semibold">{NIVEL_LABEL[5]}: {levelCounts[5]}</span>
             </div>
           </CardContent>
         </Card>
@@ -172,59 +278,75 @@ export function Competencias() {
                 <SheetDescription>Escolha uma existente ou crie uma nova</SheetDescription>
               </SheetHeader>
               <div className="mt-4 space-y-5">
-                <div className="space-y-2">
-                  <Label>Competência</Label>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="justify-between w-full">
-                        <span className="truncate">{selected?.nome || (query ? query : 'Selecionar/Buscar')}</span>
-                        <ChevronDown className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-[420px] p-3">
-                      <Input
-                        placeholder="Digite para buscar..."
+            <div className="space-y-2">
+              <Label>Competência</Label>
+              <div ref={comboRef}>
+                {!comboOpen ? (
+                  <Button variant="outline" className="justify-between w-full" onClick={() => setComboOpen(true)}>
+                    <span className="truncate">{(isCreating && query) ? `Criar: ${query}` : (selected?.nome || (query ? query : 'Selecionar/Buscar'))}</span>
+                    <ChevronDown className="size-4" />
+                  </Button>
+                ) : (
+                  <div className="rounded-md border">
+                    <Command>
+                      <CommandInput
+                        placeholder="Digite para buscar ou criar..."
                         value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        onKeyDown={(e) => {
-                          e.stopPropagation()
-                          if (['ArrowDown', 'ArrowUp', 'Home', 'End', 'PageDown', 'PageUp'].includes(e.key)) {
-                            e.preventDefault()
-                          }
-                        }}
+                        onValueChange={(v) => { setQuery(v); if (selected) setSelected(null); setIsCreating(false) }}
                       />
-                      <Separator className="my-2" />
-                      {filtered.length === 0 && (
-                        <div className="px-1 py-1 text-xs text-muted-foreground">Nenhuma encontrada. Continue para criar.</div>
-                      )}
-                      {filtered.map((c) => (
-                        <DropdownMenuItem key={c.id_competencia} onClick={() => { setSelected(c); setQuery(c.nome) }}>
-                          <Check className={`mr-2 size-4 ${selected?.id_competencia === c.id_competencia ? 'opacity-100' : 'opacity-0'}`} />
-                          <span className="truncate">{c.nome}</span>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <div className="text-xs text-muted-foreground">Se não existir, o próximo passo permite definir detalhes.</div>
-                </div>
+                      <CommandList>
+                        <CommandEmpty>
+                          {query ? (
+                            <div className="px-2 py-2 text-sm">
+                              Nenhuma encontrada. Se preferir, continue para criar "{query}".
+                            </div>
+                          ) : (
+                            'Digite para buscar'
+                          )}
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {filtered.map((c) => (
+                            <CommandItem key={c.id_competencia} onSelect={() => { setSelected(c); setQuery(c.nome); setIsCreating(false); setComboOpen(false) }}>
+                              <Check className={`mr-2 size-4 ${selected?.id_competencia === c.id_competencia ? 'opacity-100' : 'opacity-0'}`} />
+                              <span className="truncate">{c.nome}</span>
+                            </CommandItem>
+                          ))}
+                          {query && !allCompetencias.some((a) => (a?.nome || '').toLowerCase() === query.toLowerCase()) && (
+                            <CommandItem className="text-primary" onSelect={() => { setSelected(null); setIsCreating(true); setComboOpen(false) }}>
+                              <Plus className="mr-2 size-4" />
+                              Criar "{query}" como nova competência
+                            </CommandItem>
+                          )}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </div>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground">{isCreating ? (
+                <>Você criará a competência "{query}". Defina o Tipo e o Nível e clique em Adicionar.</>
+              ) : (
+                <>Se não existir, continue preenchendo o Tipo e o Nível abaixo e clique em Adicionar.</>
+              )}</div>
+            </div>
                 {!selected && (
                   <div className="space-y-2">
                     <Label>Tipo</Label>
-                    <div className="flex items-center gap-2">
+                    <ButtonGroup>
                       <Button variant={newType === 0 ? 'default' : 'outline'} onClick={() => setNewType(0)}>HARD</Button>
                       <Button variant={newType === 1 ? 'default' : 'outline'} onClick={() => setNewType(1)}>SOFT</Button>
-                    </div>
+                    </ButtonGroup>
                   </div>
                 )}
                 <div className="space-y-2">
                   <Label>Nível de proeficiência</Label>
-                  <div className="flex items-center gap-2">
+                  <ButtonGroup>
                     {[1, 2, 3, 4, 5].map((n) => (
                       <Button key={n} variant={newLevel === n ? 'default' : 'outline'} onClick={() => setNewLevel(n)}>
                         {n}
                       </Button>
                     ))}
-                  </div>
+                  </ButtonGroup>
                   <div className="text-xs text-muted-foreground">{NIVEL_LABEL[newLevel]}</div>
                 </div>
               </div>
@@ -241,11 +363,11 @@ export function Competencias() {
             <div className="flex-1 min-w-48">
               <Input placeholder="Buscar por nome..." value={queryTable} onChange={(e) => setQueryTable(e.target.value)} />
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant={filterType === 'ALL' ? 'default' : 'outline'} onClick={() => setFilterType('ALL')}>Todos</Button>
-              <Button variant={filterType === 'HARD' ? 'default' : 'outline'} onClick={() => setFilterType('HARD')}>HARD</Button>
-              <Button variant={filterType === 'SOFT' ? 'default' : 'outline'} onClick={() => setFilterType('SOFT')}>SOFT</Button>
-            </div>
+			<ButtonGroup>
+				<Button variant={filterType === 'ALL' ? 'default' : 'outline'} onClick={() => setFilterType('ALL')}>Todos</Button>
+				<Button variant={filterType === 'HARD' ? 'default' : 'outline'} onClick={() => setFilterType('HARD')}>HARD</Button>
+				<Button variant={filterType === 'SOFT' ? 'default' : 'outline'} onClick={() => setFilterType('SOFT')}>SOFT</Button>
+			</ButtonGroup>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">Ordenar</Button>
@@ -277,10 +399,18 @@ export function Competencias() {
                 )}
                 {displayed.map((uc) => {
                   const pct = Math.min(100, Math.max(0, (uc.proeficiencia / 5) * 100))
-                  const color = uc.proeficiencia >= 5 ? 'bg-emerald-500' : uc.proeficiencia >= 4 ? 'bg-green-500' : uc.proeficiencia >= 3 ? 'bg-blue-500' : uc.proeficiencia >= 2 ? 'bg-amber-500' : 'bg-red-500'
+                  const color = uc.proeficiencia === 1
+                    ? 'bg-emerald-300'
+                    : uc.proeficiencia === 2
+                      ? 'bg-emerald-700'
+                      : uc.proeficiencia === 3
+                        ? 'bg-orange-500'
+                        : uc.proeficiencia === 4
+                          ? 'bg-red-500'
+                          : 'bg-purple-600'
                   const typeBadge = uc.competencia?.tipo === 0
-                    ? 'bg-blue-100 text-blue-700 border-blue-200'
-                    : 'bg-violet-100 text-violet-700 border-violet-200'
+                    ? 'bg-blue-600 text-white border-blue-700 font-semibold'
+                    : 'bg-emerald-600 text-white border-emerald-700 font-semibold'
                   return (
                     <tr key={uc.id} className="border-t">
                       <td className="py-3 pr-4">
@@ -288,7 +418,7 @@ export function Competencias() {
                       </td>
                       <td className="py-3 pr-4">
                         <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${typeBadge}`}>
-                          {normalizeTipo(uc.competencia?.tipo) === 0 ? 'HARD' : 'SOFT'}
+                          {normalizeTipo(uc.competencia?.tipo) === 0 ? 'Hard' : 'Soft'}
                         </span>
                       </td>
                       <td className="py-3 pr-4 align-middle">
@@ -348,7 +478,7 @@ export function Competencias() {
                 if (!user?.id || !editItem) return
                 setLoading(true)
                 try {
-                  await api.delete(`/colaboradores/${encodeURIComponent(user.id)}/competencias`, { data: { id_item: editItem.id } })
+                  await api.delete(`/colaboradores/${encodeURIComponent(user.id)}/competencias/${encodeURIComponent(editItem.id)}`)
                   await loadData()
                   toast.success('Competência removida')
                   setEditOpen(false)
@@ -365,8 +495,9 @@ export function Competencias() {
                 if (!user?.id || !editItem) return
                 setLoading(true)
                 try {
+                  const compId = (editItem.competencia?.id_competencia ?? editItem.id_competencia ?? editItem.id)
                   await api.patch(`/colaboradores/${encodeURIComponent(user.id)}/competencias`, {
-                    competencias: [{ id: editItem.id, id_competencia: editItem.id_competencia, proeficiencia: editLevel }],
+                    items: [{ competenciaId: compId, proeficiencia: editLevel }],
                   })
                   await loadData()
                   toast.success('Proeficiência atualizada')

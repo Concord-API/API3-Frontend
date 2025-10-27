@@ -1,8 +1,14 @@
 import { motion, type HTMLMotionProps } from 'framer-motion'
 
-export function StaggerContainer({ delay = 0, children, ...rest }: HTMLMotionProps<'div'> & { delay?: number }) {
+export function StaggerContainer({ delay = 0, children, className, style, ...rest }: HTMLMotionProps<'div'> & { delay?: number; style?: React.CSSProperties }) {
   return (
     <motion.div
+      className={className}
+      style={{
+        WebkitFontSmoothing: 'antialiased',
+        backfaceVisibility: 'hidden',
+        ...style
+      }}
       initial="hidden"
       animate="show"
       variants={{
@@ -18,9 +24,16 @@ export function StaggerContainer({ delay = 0, children, ...rest }: HTMLMotionPro
   )
 }
 
-export function StaggerItem({ children, ...rest }: HTMLMotionProps<'div'>) {
+export function StaggerItem({ children, className, style, ...rest }: HTMLMotionProps<'div'> & { style?: React.CSSProperties }) {
   return (
     <motion.div
+      className={className}
+      style={{
+        WebkitFontSmoothing: 'antialiased',
+        backfaceVisibility: 'hidden',
+        transform: 'translateZ(0)',
+        ...style
+      }}
       variants={{
         hidden: { opacity: 0, y: 8, filter: 'blur(2px)' },
         show: {

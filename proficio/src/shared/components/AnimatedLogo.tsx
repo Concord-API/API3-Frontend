@@ -1,5 +1,6 @@
 import { motion, useAnimationControls } from 'framer-motion'
 import { useEffect } from 'react'
+import { cn } from '@/shared/lib/utils'
 
 type AnimatedLogoProps = {
   src: string
@@ -22,7 +23,12 @@ export function AnimatedLogo({ src, className }: AnimatedLogoProps) {
     <motion.img
       src={src}
       alt="Proficio"
-      className={className}
+      className={cn('dark:invert', className)}
+      style={{
+        WebkitFontSmoothing: 'antialiased',
+        backfaceVisibility: 'hidden',
+        transform: 'translateZ(0)',
+      }}
       initial={{ x: -40, opacity: 0, rotate: 0 }}
       animate={controls}
     />

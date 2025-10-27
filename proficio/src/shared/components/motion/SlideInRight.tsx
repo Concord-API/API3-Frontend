@@ -10,7 +10,12 @@ export function SlideInRight({ delay = 0, duration = 0.6, offset = 24, children,
   return (
     <motion.div
       className={className}
-      style={{ willChange: 'transform, opacity', ...style }}
+      style={{ 
+        WebkitFontSmoothing: 'antialiased',
+        backfaceVisibility: 'hidden',
+        transform: 'translateZ(0)',
+        ...style 
+      }}
       initial={{ x: offset, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration, ease: 'easeOut', delay }}

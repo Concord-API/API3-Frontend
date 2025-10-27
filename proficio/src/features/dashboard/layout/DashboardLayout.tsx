@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate, useLocation, matchPath } from 'react-router-dom'
-import { Button } from '@/shared/components/ui/button'
+import { useEffect, useState } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -30,14 +31,43 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { Home } from 'lucide-react'
 import { getRoutesForRole } from '@/features/dashboard/routes/dashboardRoutes'
 import { AnimatedLogo } from '@/shared/components/AnimatedLogo'
-import { ROLES } from '@/shared/constants/roles'
+import { Roles } from '@/shared/constants/roles'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/shared/components/ui/breadcrumb'
+import ThemeModeToggle from '@/shared/components/ThemeModeToggle'
 import logoUrl from '@/assets/logo.svg'
+import { api } from '@/shared/lib/api'
 
 export function DashboardLayout() {
   const { logout, user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [avatar, setAvatar] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    if (!user?.id) {
+      setAvatar(undefined)
+      return
+    }
+    ;(async () => {
+      try {
+        const res = await api.get<any>(`/colaboradores/${encodeURIComponent(user.id)}/perfil`)
+        const vm: any = res.data
+        const normalize = (s?: string | null) => {
+          if (!s) return undefined as unknown as string
+          return s.startsWith('data:') ? s : `data:image/png;base64,${s}`
+        }
+        setAvatar(normalize(vm?.avatar))
+      } catch {
+        setAvatar(undefined)
+      }
+    })()
+    const handler = (e: any) => {
+      const s = e?.detail as string | undefined
+      setAvatar(s ?? undefined)
+    }
+    window.addEventListener('profile-avatar-updated', handler as any)
+    return () => window.removeEventListener('profile-avatar-updated', handler as any)
+  }, [user?.id])
 
   function handleLogout() {
     logout()
@@ -73,40 +103,77 @@ export function DashboardLayout() {
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {getRoutesForRole(user?.role ?? ROLES.COLABORADOR).map((r) => {
-                  const Icon = r.icon ?? Home
-                  return (
-                    <SidebarMenuItem key={r.path || 'root'}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isRouteActive(`/dashboard/${r.path}`, r.path === '')}
-                        tooltip={r.label}
-                      >
-                        <NavLink to={`/dashboard/${r.path}`.replace(/\/$/, '')} end={r.path === ''}>
-                          <Icon />
-                          <span>{r.label}</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          {(() => {
+            const role = user?.role ?? Roles.Colaborador
+            const routes = getRoutesForRole(role)
+            const general = routes.filter(r => (r.section ?? 'general') === 'general')
+            const org = routes.filter(r => r.section === 'org')
+            return (
+              <>
+                <SidebarGroup>
+                  <SidebarGroupLabel>Geral</SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {general.map((r) => {
+                        const Icon = r.icon ?? Home
+                        return (
+                          <SidebarMenuItem key={r.path || 'root'}>
+                            <SidebarMenuButton
+                              asChild
+                              isActive={isRouteActive(`/dashboard/${r.path}`, r.path === '')}
+                              tooltip={r.label}
+                            >
+                              <NavLink to={`/dashboard/${r.path}`.replace(/\/$/, '')} end={r.path === ''}>
+                                <Icon />
+                                <span>{r.label}</span>
+                              </NavLink>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        )
+                      })}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+                {org.length > 0 && (
+                  <SidebarGroup>
+                    <SidebarGroupLabel>Organizações</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {org.map((r) => {
+                          const Icon = r.icon ?? Home
+                          return (
+                            <SidebarMenuItem key={r.path || 'root'}>
+                              <SidebarMenuButton
+                                asChild
+                                isActive={isRouteActive(`/dashboard/${r.path}`, r.path === '')}
+                                tooltip={r.label}
+                              >
+                                <NavLink to={`/dashboard/${r.path}`.replace(/\/$/, '')} end={r.path === ''}>
+                                  <Icon />
+                                  <span>{r.label}</span>
+                                </NavLink>
+                              </SidebarMenuButton>
+                            </SidebarMenuItem>
+                          )
+                        })}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </SidebarGroup>
+                )}
+              </>
+            )
+          })()}
         </SidebarContent>
         <SidebarSeparator />
         <SidebarFooter>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center gap-2 rounded-md border px-2 py-2 text-left hover:bg-accent">
-                <Avatar className="size-7">
-                  <AvatarImage src={undefined} alt={user?.name ?? 'Usuário'} />
+              <button className="w-full flex items-center gap-2 rounded-md border px-2 py-2 text-left hover:bg-accent cursor-pointer group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0 group-data-[collapsible=icon]:hover:bg-transparent">
+                <Avatar className="size-7 group-data-[collapsible=icon]:size-9">
+                  <AvatarImage src={avatar ?? undefined} alt={user?.name ?? 'Usuário'} />
                   <AvatarFallback>{user?.name?.[0] ?? 'U'}</AvatarFallback>
                 </Avatar>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
                   <div className="truncate text-sm font-medium">{user?.name ?? 'Usuário'}</div>
                   <div className="truncate text-xs text-muted-foreground">{user?.email ?? 'm@example.com'}</div>
                 </div>
@@ -116,7 +183,7 @@ export function DashboardLayout() {
               <DropdownMenuLabel>
                 <div className="flex items-center gap-2">
                   <Avatar className="size-8">
-                    <AvatarImage src={undefined} alt={user?.name ?? 'Usuário'} />
+                    <AvatarImage src={avatar ?? undefined} alt={user?.name ?? 'Usuário'} />
                     <AvatarFallback>{user?.name?.[0] ?? 'U'}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
@@ -126,7 +193,7 @@ export function DashboardLayout() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">Log out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </SidebarFooter>
@@ -139,7 +206,7 @@ export function DashboardLayout() {
         >
           <SidebarTrigger />
           <Separator orientation="vertical" className="mx-1 h-6" />
-          <div className="text-sm font-medium">
+          <div className="text-sm font-medium flex-1">
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
@@ -148,7 +215,7 @@ export function DashboardLayout() {
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 {(() => {
-                  const role = user?.role ?? ROLES.COLABORADOR
+                  const role = user?.role ?? Roles.Colaborador
                   const currentPath = location.pathname.replace(/^\/dashboard\/?/, '')
                   const currentKey = currentPath.split('/')[0] ?? ''
                   const current = getRoutesForRole(role).find(r => r.path === currentKey)
@@ -165,6 +232,7 @@ export function DashboardLayout() {
               </BreadcrumbList>
             </Breadcrumb>
           </div>
+          <ThemeModeToggle />
         </header>
         <div className="flex flex-1 flex-col p-4 lg:p-6">
           <div className="@container/main flex flex-1 flex-col gap-4 md:gap-6">

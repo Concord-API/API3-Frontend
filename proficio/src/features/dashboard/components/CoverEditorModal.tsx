@@ -13,26 +13,24 @@ type Props = {
   onSave: (blob: Blob) => void
 }
 
-export function AvatarEditorModal({ open, onClose, src, onPick, onSave }: Props) {
+export function CoverEditorModal({ open, onClose, src, onPick, onSave }: Props) {
   const cropElRef = useRef<HTMLDivElement | null>(null)
   const cropInstanceRef = useRef<any>(null)
 
   useEffect(() => {
     if (open && src && cropElRef.current) {
       const c = new Croppie(cropElRef.current, {
-        viewport: { width: 240, height: 240, type: 'circle' },
-        boundary: { width: 300, height: 300 },
+        // Horizontal rectangular viewport for cover
+        viewport: { width: 560, height: 220, type: 'square' },
+        boundary: { width: 640, height: 320 },
         showZoomer: true,
         enableOrientation: true,
       })
       cropInstanceRef.current = c
-      // Bind e reseta o zoom para exibir a imagem inteira novamente
       c.bind({ url: src }).then(() => {
         try {
           c.setZoom(0)
-        } catch (_) {
-          // fallback silencioso; algumas versões ajustam sozinho para o min zoom
-        }
+        } catch {}
       })
     }
     return () => {
@@ -47,10 +45,10 @@ export function AvatarEditorModal({ open, onClose, src, onPick, onSave }: Props)
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-3xl">
         <CardHeader>
-          <CardTitle>Foto de perfil</CardTitle>
-          <CardDescription>Selecione e ajuste a imagem para o avatar</CardDescription>
+          <CardTitle>Capa do perfil</CardTitle>
+          <CardDescription>Selecione e ajuste a imagem para a capa</CardDescription>
         </CardHeader>
         <CardContent>
           {!src && (
