@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Label } from '@/shared/components/ui/label'
 import { toast } from 'sonner'
 import { Item, ItemContent, ItemGroup, ItemHeader, ItemMedia, ItemTitle } from '@/shared/components/ui/item'
+import { Skeleton } from '@/shared/components/ui/skeleton'
 
 type Gender = 'Male' | 'Female'
 
@@ -86,6 +87,7 @@ export function Colaboradores() {
   const [novoEmail, setNovoEmail] = useState('')
   const [novoEquipe, setNovoEquipe] = useState<number | 'none'>('none')
   const [saving, setSaving] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
 
   useEffect(() => {
     function onDocMouseDown(e: MouseEvent) {
@@ -100,9 +102,18 @@ export function Colaboradores() {
   }, [])
 
   useEffect(() => {
-    api.get<Colaborador[]>('/colaboradores').then((res) => setItems(res.data))
-    api.get<Setor[]>('/setores').then((res) => setSetores(res.data as any))
-    api.get<Equipe[]>('/equipes').then((res) => setEquipes(res.data as any))
+    setInitialLoading(true)
+    Promise.all([
+      api.get<Colaborador[]>('/colaboradores'),
+      api.get<Setor[]>('/setores'),
+      api.get<Equipe[]>('/equipes'),
+    ])
+      .then(([c, s, e]) => {
+        setItems(c.data)
+        setSetores(s.data as any)
+        setEquipes(e.data as any)
+      })
+      .finally(() => setInitialLoading(false))
   }, [])
 
   useEffect(() => {
@@ -138,6 +149,50 @@ export function Colaboradores() {
     if (!t) return base
     return base.filter(c => `${c.nome} ${c.sobrenome}`.toLowerCase().includes(t) || (c as any).email?.toLowerCase()?.includes(t))
   }, [q, items, user?.role, myTeamId, selectedSetor, selectedEquipe])
+
+  if (initialLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="w-full max-w-sm">
+            <Skeleton className="h-9 w-full" />
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <Skeleton className="h-8 w-24" />
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-8 w-8" />
+              <Skeleton className="h-8 w-8" />
+            </div>
+          </div>
+        </div>
+        {mode === 'table' ? (
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-24" />
+            {[...Array(8)].map((_, idx) => (
+              <Skeleton key={idx} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {[...Array(8)].map((_, idx) => (
+              <div key={idx} className="rounded-xl border p-4">
+                <Skeleton className="h-40 w-full" />
+                <div className="mt-3 space-y-2">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-16 w-full" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Skeleton className="h-14 w-full" />
+                    <Skeleton className="h-14 w-full" />
+                  </div>
+                  <Skeleton className="h-14 w-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">

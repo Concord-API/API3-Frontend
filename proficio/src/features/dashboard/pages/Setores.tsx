@@ -13,6 +13,7 @@ import { Label } from '@/shared/components/ui/label'
 import { toast } from 'sonner'
 import { Item, ItemContent, ItemGroup, ItemHeader, ItemTitle } from '@/shared/components/ui/item'
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar'
+import { Skeleton } from '@/shared/components/ui/skeleton'
 
 export function Setores() {
   const { user } = useAuth()
@@ -23,6 +24,7 @@ export function Setores() {
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([])
   const [mySetorId, setMySetorId] = useState<number | null>(null)
   const [mode, setMode] = useState<'table' | 'grid'>('grid')
+  const [initialLoading, setInitialLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
   const [novoNome, setNovoNome] = useState('')
   const [novaDesc, setNovaDesc] = useState('')
@@ -36,30 +38,35 @@ export function Setores() {
 
   useEffect(() => {
     async function load() {
-      const [s, e, c] = await Promise.all([
-        api.get<any[]>('/setores?status=all'),
-        api.get<any[]>('/equipes?status=all'),
-        api.get<Colaborador[]>('/colaboradores'),
-      ])
-      const setoresMapped: Setor[] = (Array.isArray(s.data) ? s.data : []).map((vm: any) => ({
-        id_setor: vm.id ?? vm.id_setor,
-        nome_setor: vm.nome ?? vm.nome_setor,
-        desc_setor: vm.descricao ?? vm.desc_setor ?? null,
-        status: vm.status ?? true,
-        id_diretor: vm.diretorId ?? vm.id_diretor ?? null,
-        diretor: null,
-      }))
-      setSetores(setoresMapped)
-      const equipesMapped: Equipe[] = (Array.isArray(e.data) ? e.data : []).map((vm: any) => ({
-        id_equipe: vm.id ?? vm.id_equipe,
-        nome_equipe: vm.nome ?? vm.nome_equipe,
-        id_setor: vm.setorId ?? vm.id_setor ?? vm.setor?.id_setor,
-        status: vm.status ?? true,
-        setor: vm.setor ? { id_setor: vm.setor.id_setor, nome_setor: vm.setor.nome_setor } as any : undefined,
-        colaboradoresCount: vm.colaboradoresCount ?? 0,
-      } as any))
-      setEquipes(equipesMapped)
-      setColaboradores(Array.isArray(c.data) ? c.data : [])
+      setInitialLoading(true)
+      try {
+        const [s, e, c] = await Promise.all([
+          api.get<any[]>('/setores?status=all'),
+          api.get<any[]>('/equipes?status=all'),
+          api.get<Colaborador[]>('/colaboradores'),
+        ])
+        const setoresMapped: Setor[] = (Array.isArray(s.data) ? s.data : []).map((vm: any) => ({
+          id_setor: vm.id ?? vm.id_setor,
+          nome_setor: vm.nome ?? vm.nome_setor,
+          desc_setor: vm.descricao ?? vm.desc_setor ?? null,
+          status: vm.status ?? true,
+          id_diretor: vm.diretorId ?? vm.id_diretor ?? null,
+          diretor: null,
+        }))
+        setSetores(setoresMapped)
+        const equipesMapped: Equipe[] = (Array.isArray(e.data) ? e.data : []).map((vm: any) => ({
+          id_equipe: vm.id ?? vm.id_equipe,
+          nome_equipe: vm.nome ?? vm.nome_equipe,
+          id_setor: vm.setorId ?? vm.id_setor ?? vm.setor?.id_setor,
+          status: vm.status ?? true,
+          setor: vm.setor ? { id_setor: vm.setor.id_setor, nome_setor: vm.setor.nome_setor } as any : undefined,
+          colaboradoresCount: vm.colaboradoresCount ?? 0,
+        } as any))
+        setEquipes(equipesMapped)
+        setColaboradores(Array.isArray(c.data) ? c.data : [])
+      } finally {
+        setInitialLoading(false)
+      }
     }
     load()
   }, [])
@@ -86,6 +93,54 @@ export function Setores() {
 
   const listActive = useMemo(() => list.filter(i => i.setor.status !== false), [list])
   const listInactive = useMemo(() => list.filter(i => i.setor.status === false), [list])
+
+  if (initialLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="w-full max-w-sm">
+            <Skeleton className="h-9 w-full" />
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <Skeleton className="h-10 w-28" />
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-8 w-8" />
+              <Skeleton className="h-8 w-8" />
+            </div>
+          </div>
+        </div>
+        {mode === 'table' ? (
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-24" />
+            {[...Array(6)].map((_, idx) => (
+              <Skeleton key={idx} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {[...Array(8)].map((_, idx) => (
+                <div key={idx} className="rounded-lg border p-4">
+                  <Skeleton className="h-5 w-40" />
+                  <div className="mt-2 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-6 w-6 rounded-full" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Skeleton className="h-14 w-full" />
+                      <Skeleton className="h-14 w-full" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">

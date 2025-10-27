@@ -13,6 +13,7 @@ import { Check, Trash, ChevronDown, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { ButtonGroup } from '@/shared/components/ui/button-group'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/shared/components/ui/command'
+import { Skeleton } from '@/shared/components/ui/skeleton'
 
 type UserCompetenciaItem = ColaboradorCompetencia & { competencia: Competencia }
 
@@ -51,6 +52,7 @@ export function Competencias() {
   const [comboOpen, setComboOpen] = useState(false)
   const comboRef = useRef<HTMLDivElement | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
 
   useEffect(() => {
     function onDocMouseDown(e: MouseEvent) {
@@ -99,30 +101,35 @@ export function Competencias() {
 
   async function loadData() {
     if (!user?.id) return
-    const [allRes, mineRes] = await Promise.all([
-      api.get('/competencias'),
-      api.get(`/colaboradores/${encodeURIComponent(user.id)}/competencias`),
-    ])
-    const allList = Array.isArray(allRes.data) ? allRes.data : []
-    const normalizedAll = allList.map((c: any) => ({
-      ...c,
-      id_competencia: c.id ?? c.id_competencia,
-      tipo: normalizeTipo(c?.tipo),
-    })) as Competencia[]
-    const mineList = Array.isArray(mineRes.data) ? mineRes.data : []
-    const normalizedMine = mineList.map((uc: any) => {
-      const hasNested = uc && typeof uc === 'object' && uc.competencia
-      const competencia = hasNested
-        ? { ...uc.competencia, tipo: normalizeTipo(uc.competencia.tipo) }
-        : { id_competencia: uc.id, nome: uc.nome, tipo: normalizeTipo(uc.tipo) }
-      return {
-        ...uc,
-        id_competencia: hasNested ? (uc.id_competencia ?? competencia.id_competencia) : competencia.id_competencia,
-        competencia,
-      }
-    }) as UserCompetenciaItem[]
-    setAllCompetencias(normalizedAll)
-    setUserCompetencias(normalizedMine)
+    setInitialLoading(true)
+    try {
+      const [allRes, mineRes] = await Promise.all([
+        api.get('/competencias'),
+        api.get(`/colaboradores/${encodeURIComponent(user.id)}/competencias`),
+      ])
+      const allList = Array.isArray(allRes.data) ? allRes.data : []
+      const normalizedAll = allList.map((c: any) => ({
+        ...c,
+        id_competencia: c.id ?? c.id_competencia,
+        tipo: normalizeTipo(c?.tipo),
+      })) as Competencia[]
+      const mineList = Array.isArray(mineRes.data) ? mineRes.data : []
+      const normalizedMine = mineList.map((uc: any) => {
+        const hasNested = uc && typeof uc === 'object' && uc.competencia
+        const competencia = hasNested
+          ? { ...uc.competencia, tipo: normalizeTipo(uc.competencia.tipo) }
+          : { id_competencia: uc.id, nome: uc.nome, tipo: normalizeTipo(uc.tipo) }
+        return {
+          ...uc,
+          id_competencia: hasNested ? (uc.id_competencia ?? competencia.id_competencia) : competencia.id_competencia,
+          competencia,
+        }
+      }) as UserCompetenciaItem[]
+      setAllCompetencias(normalizedAll)
+      setUserCompetencias(normalizedMine)
+    } finally {
+      setInitialLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -151,6 +158,53 @@ export function Competencias() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (initialLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[0,1,2,3].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-36" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-20" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader className="gap-3">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-3 w-56 mt-2" />
+              </div>
+              <Skeleton className="h-9 w-24" />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex-1 min-w-48">
+                <Skeleton className="h-9 w-full" />
+              </div>
+              <Skeleton className="h-9 w-20" />
+              <Skeleton className="h-9 w-20" />
+              <Skeleton className="h-9 w-20" />
+              <Skeleton className="h-9 w-24" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {[...Array(6)].map((_, idx) => (
+                <Skeleton key={idx} className="h-10 w-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (

@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
 import { Item, ItemContent, ItemGroup, ItemHeader, ItemTitle } from '@/shared/components/ui/item'
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar'
+import { Skeleton } from '@/shared/components/ui/skeleton'
 
 export function Equipes() {
   const { user } = useAuth()
@@ -32,6 +33,7 @@ export function Equipes() {
   const [setores, setSetores] = useState<Setor[]>([])
   const [selectedSetor, setSelectedSetor] = useState<number | 'all'>(isFinite(filterSetorFromUrl) ? filterSetorFromUrl : 'all')
   const [mode, setMode] = useState<'table' | 'grid'>('grid')
+  const [initialLoading, setInitialLoading] = useState(true)
   const [gestoresByEquipe, setGestoresByEquipe] = useState<Record<number, Colaborador | undefined>>({})
   const [gestorIdByEquipe, setGestorIdByEquipe] = useState<Record<number, number | undefined>>({})
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([])
@@ -70,32 +72,35 @@ export function Equipes() {
   }, [])
 
   useEffect(() => {
-    api.get<any[]>('/equipes?status=all').then((res) => {
-      const list = Array.isArray(res.data) ? res.data : []
-      setItems(list.map(mapEquipeVmToEquipe) as any)
-      const mid: Record<number, number | undefined> = {}
-      for (const vm of list) {
-        const teamId = vm?.id ?? vm?.id_equipe
-        if (teamId != null) mid[teamId] = vm?.gestorId ?? vm?.id_gestor
-      }
-      setGestorIdByEquipe(mid)
-    })
-    api.get<any[]>('/setores').then((res) => {
-      const list = Array.isArray(res.data) ? res.data : []
-      const mapped: Setor[] = list.map((vm: any) => ({
-        id_setor: vm.id ?? vm.id_setor,
-        nome_setor: vm.nome ?? vm.nome_setor,
-        desc_setor: vm.descricao ?? vm.desc_setor ?? null,
-        status: vm.status ?? true,
-        id_diretor: vm.diretorId ?? vm.id_diretor ?? null,
-        diretor: null,
-      }))
-      setSetores(mapped)
-    })
-    api.get<Colaborador[]>('/colaboradores').then((res) => {
-      const list = Array.isArray(res.data) ? res.data : []
-      setColaboradores(list as any)
-    })
+    setInitialLoading(true)
+    Promise.all([
+      api.get<any[]>('/equipes?status=all'),
+      api.get<any[]>('/setores'),
+      api.get<Colaborador[]>('/colaboradores'),
+    ])
+      .then(([eqRes, stRes, colRes]) => {
+        const eqList = Array.isArray(eqRes.data) ? eqRes.data : []
+        setItems(eqList.map(mapEquipeVmToEquipe) as any)
+        const mid: Record<number, number | undefined> = {}
+        for (const vm of eqList) {
+          const teamId = vm?.id ?? vm?.id_equipe
+          if (teamId != null) mid[teamId] = vm?.gestorId ?? vm?.id_gestor
+        }
+        setGestorIdByEquipe(mid)
+        const stList = Array.isArray(stRes.data) ? stRes.data : []
+        const mapped: Setor[] = stList.map((vm: any) => ({
+          id_setor: vm.id ?? vm.id_setor,
+          nome_setor: vm.nome ?? vm.nome_setor,
+          desc_setor: vm.descricao ?? vm.desc_setor ?? null,
+          status: vm.status ?? true,
+          id_diretor: vm.diretorId ?? vm.id_diretor ?? null,
+          diretor: null,
+        }))
+        setSetores(mapped)
+        const colList = Array.isArray(colRes.data) ? colRes.data : []
+        setColaboradores(colList as any)
+      })
+      .finally(() => setInitialLoading(false))
   }, [])
 
   const recomputeGestores = useCallback(() => {
@@ -147,6 +152,54 @@ export function Equipes() {
 
   const filteredActive = useMemo(() => filtered.filter(e => (e as any).status !== false), [filtered])
   const filteredInactive = useMemo(() => filtered.filter(e => (e as any).status === false), [filtered])
+
+  if (initialLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="w-full max-w-xs">
+            <Skeleton className="h-9 w-full" />
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <Skeleton className="h-8 w-24" />
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-8 w-8" />
+              <Skeleton className="h-8 w-8" />
+            </div>
+          </div>
+        </div>
+        {mode === 'table' ? (
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-24" />
+            {[...Array(6)].map((_, idx) => (
+              <Skeleton key={idx} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {[...Array(8)].map((_, idx) => (
+                <div key={idx} className="rounded-lg border p-4">
+                  <Skeleton className="h-5 w-40" />
+                  <div className="mt-2 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-6 w-6 rounded-full" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Skeleton className="h-14 w-full" />
+                      <Skeleton className="h-14 w-full" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">

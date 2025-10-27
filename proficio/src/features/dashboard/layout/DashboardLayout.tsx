@@ -61,6 +61,12 @@ export function DashboardLayout() {
         setAvatar(undefined)
       }
     })()
+    const handler = (e: any) => {
+      const s = e?.detail as string | undefined
+      setAvatar(s ?? undefined)
+    }
+    window.addEventListener('profile-avatar-updated', handler as any)
+    return () => window.removeEventListener('profile-avatar-updated', handler as any)
   }, [user?.id])
 
   function handleLogout() {

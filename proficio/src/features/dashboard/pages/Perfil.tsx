@@ -10,6 +10,7 @@ import type { Colaborador, ColaboradorCompetencia } from '@/shared/types'
 import { SquarePen, GripVertical, X, Camera } from 'lucide-react'
 import { toast } from 'sonner'
 import { AvatarEditorModal } from '@/features/dashboard/components/AvatarEditorModal'
+import { CoverEditorModal } from '@/features/dashboard/components/CoverEditorModal'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 
 type Gender = 'Male' | 'Female'
@@ -69,6 +70,9 @@ export function Perfil() {
   const [avatarCropOpen, setAvatarCropOpen] = useState(false)
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [coverCropOpen, setCoverCropOpen] = useState(false)
+  const [coverSrc, setCoverSrc] = useState<string | null>(null)
+  const coverInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (drawerOpen) setDraftSkills(skills)
@@ -276,24 +280,13 @@ export function Perfil() {
         />
         {editMode && (
           <div className="absolute bottom-2 right-2">
-            <input id="upload-cover" type="file" accept="image/*" className="hidden"
-              onChange={async (e) => {
-                const f = e.target.files?.[0]
-                if (!f) return
-                const reader = new FileReader()
-                reader.onload = async () => {
-                  const base64 = String(reader.result)
-                  setProfileCover(base64)
-                  await api.patch('/perfil', { capa: base64 })
-                  setLastUpdated(new Date())
-                  toast.success('Capa atualizada')
-                }
-                reader.readAsDataURL(f)
-              }}
-            />
-            <label htmlFor="upload-cover" className="rounded-md border bg-background/90 px-2 py-1 text-xs shadow-sm cursor-pointer hover:bg-accent">
+            <button
+              type="button"
+              className="rounded-md border bg-background/90 px-2 py-1 text-xs shadow-sm hover:bg-accent"
+              onClick={() => setCoverCropOpen(true)}
+            >
               Alterar capa
-            </label>
+            </button>
           </div>
         )}
       </div>
@@ -364,10 +357,43 @@ export function Perfil() {
             setPhotoPreview(base64)
             await api.patch(`/colaboradores/${user!.id}/perfil`, { avatar: base64 })
             setProfilePhoto(base64)
+            try { window.dispatchEvent(new CustomEvent('profile-avatar-updated', { detail: base64 })) } catch {}
             setLastUpdated(new Date())
             toast.success('Foto de perfil atualizada')
             setAvatarCropOpen(false)
             setAvatarSrc(null)
+          }
+          reader.readAsDataURL(blob)
+        }}
+      />
+
+      <input
+        ref={coverInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (!f) return
+          const url = URL.createObjectURL(f)
+          setCoverSrc(url)
+        }}
+      />
+      <CoverEditorModal
+        open={coverCropOpen}
+        src={coverSrc ?? (profileCover ?? null)}
+        onPick={() => coverInputRef.current?.click()}
+        onClose={() => { setCoverCropOpen(false); setCoverSrc(null) }}
+        onSave={(blob) => {
+          const reader = new FileReader()
+          reader.onload = async () => {
+            const base64 = String(reader.result)
+            setProfileCover(base64)
+            await api.patch('/perfil', { capa: base64 })
+            setLastUpdated(new Date())
+            toast.success('Capa atualizada')
+            setCoverCropOpen(false)
+            setCoverSrc(null)
           }
           reader.readAsDataURL(blob)
         }}
