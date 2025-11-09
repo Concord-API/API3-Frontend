@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { api } from '@/shared/lib/api'
 import type { Colaborador, Equipe, Setor, Competencia, ColaboradorCompetencia } from '@/shared/types'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/shared/components/ui/chart'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
-import { TrendingUp, Users, Building2, Layers, ArrowUpRight } from 'lucide-react'
+import { Users, Building2, Layers } from 'lucide-react'
 import { Skeleton } from '@/shared/components/ui/skeleton'
+import { useNavigate } from 'react-router-dom'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/shared/components/ui/command'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 
 export function HomeDiretor() {
+  const navigate = useNavigate()
   const [setores, setSetores] = useState<Setor[]>([])
   const [equipes, setEquipes] = useState<Equipe[]>([])
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([])
@@ -17,6 +22,14 @@ export function HomeDiretor() {
   const [monthsRange, setMonthsRange] = useState<6 | 12 | 36>(6)
   const [setorFilter, setSetorFilter] = useState<number | 'all'>('all')
   const [selectedCompetenciaId, setSelectedCompetenciaId] = useState<number | 'all'>('all')
+  const [showCompetenciasDropdown, setShowCompetenciasDropdown] = useState(false)
+  const [competenciaQuery, setCompetenciaQuery] = useState('')
+  const competenciasRef = useRef<HTMLDivElement | null>(null)
+  const [showSetoresDropdown, setShowSetoresDropdown] = useState(false)
+  const [setorQuery, setSetorQuery] = useState('')
+  const setoresRef = useRef<HTMLDivElement | null>(null)
+  const [sparklineTooltip, setSparklineTooltip] = useState<{ x: number; y: number; label: string; value: number } | null>(null)
+  const sparklineRef = useRef<SVGSVGElement | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -142,6 +155,18 @@ export function HomeDiretor() {
     return selectedCompetenciaId === id
   }
 
+  useEffect(() => {
+    function onDocMouseDown(e: MouseEvent) {
+      const target = e.target as Node | null
+      const clickedInsideCompetencias = competenciasRef.current?.contains(target as Node) ?? false
+      const clickedInsideSetores = setoresRef.current?.contains(target as Node) ?? false
+      if (!clickedInsideCompetencias) setShowCompetenciasDropdown(false)
+      if (!clickedInsideSetores) setShowSetoresDropdown(false)
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [])
+
 
   
 
@@ -155,8 +180,7 @@ export function HomeDiretor() {
     const totalColab = filteredColabs.length
     const totalEquipes = (setorFilter === 'all' ? equipes : equipes.filter(eq => eq.id_setor === setorFilter)).length
     const totalSetores = (setorFilter === 'all' ? setores : setores.filter(s => s.id_setor === setorFilter)).length
-    const ativos = filteredColabs.filter(c => c.status).length
-    return { totalColab, totalEquipes, totalSetores, ativos }
+    return { totalColab, totalEquipes, totalSetores }
   }, [filteredColabs, equipes, setores, setorFilter])
 
   const porSetor = useMemo(() => {
@@ -187,11 +211,21 @@ export function HomeDiretor() {
 
   const serieEvolucao = useMemo(() => {
     const len = monthsRange
-    const buckets = Array.from({ length: len }).map((_, i) => ({ label: `${len - 1 - i}m`, value: 0 }))
+    const now = new Date()
+    const buckets = Array.from({ length: len }).map((_, i) => {
+      const monthsAgo = len - 1 - i
+      const date = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1)
+      return { 
+        label: `${monthsAgo}m`, 
+        value: 0,
+        date: date,
+        dateLabel: format(date, 'MMM yyyy', { locale: ptBR })
+      }
+    })
     for (const c of filteredColabs) {
       const d = c.criado_em ? new Date(c.criado_em) : null
       if (!d) continue
-      const diffMonths = (new Date().getFullYear() - d.getFullYear()) * 12 + (new Date().getMonth() - d.getMonth())
+      const diffMonths = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth())
       const idx = len - 1 - Math.min(len - 1, Math.max(0, diffMonths))
       if (buckets[idx]) buckets[idx].value += 1
     }
@@ -358,53 +392,170 @@ export function HomeDiretor() {
           >{m}m</button>
         ))}
         <div className="ml-4 text-xs text-muted-foreground">Setor</div>
-        <button
-          className={`rounded-full px-3 py-1 text-xs border ${setorFilter === 'all' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
-          onClick={() => setSetorFilter('all')}
-        >Todos</button>
-        {setores.map((s, i) => (
-          <button key={s.id_setor ?? `${s.nome_setor}-${i}`}
-            className={`rounded-full px-3 py-1 text-xs border ${setorFilter === s.id_setor ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
-            onClick={() => setSetorFilter(s.id_setor)}
-          >{s.nome_setor}</button>
-        ))}
+        <div className="flex gap-2 items-center">
+          <button
+            className={`rounded-full px-3 py-1 text-xs border ${setorFilter === 'all' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
+            onClick={() => setSetorFilter('all')}
+          >Todos</button>
+          {setores.slice(0, 5).map((s, i) => (
+            <button 
+              key={s.id_setor ?? `${s.nome_setor}-${i}`}
+              className={`rounded-full px-3 py-1 text-xs border ${setorFilter === s.id_setor ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
+              onClick={() => setSetorFilter(s.id_setor)}
+            >{s.nome_setor}</button>
+          ))}
+          {setores.length > 5 && (
+            <div className="relative" ref={setoresRef}>
+              <button
+                className={`rounded-full px-3 py-1 text-xs border ${showSetoresDropdown ? 'bg-primary text-primary-foreground' : 'bg-transparent hover:bg-accent'}`}
+                onClick={() => setShowSetoresDropdown((v) => !v)}
+              >
+                ...
+              </button>
+              {showSetoresDropdown && (
+                <div className="absolute z-20 mt-1 w-56 rounded-md border bg-popover shadow-xs">
+                  <Command>
+                    <CommandInput placeholder="Filtrar setor..." value={setorQuery} onValueChange={setSetorQuery} />
+                    <CommandList>
+                      <CommandEmpty>Nenhum setor</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem 
+                          onSelect={() => { 
+                            setSetorFilter('all')
+                            setShowSetoresDropdown(false)
+                            setSetorQuery('')
+                          }}
+                        >
+                          Todos
+                        </CommandItem>
+                        {setores
+                          .filter(s => s.nome_setor.toLowerCase().includes(setorQuery.toLowerCase()))
+                          .map((s) => (
+                            <CommandItem 
+                              key={s.id_setor ?? s.nome_setor}
+                              onSelect={() => { 
+                                setSetorFilter(s.id_setor)
+                                setShowSetoresDropdown(false)
+                                setSetorQuery('')
+                              }}
+                            >
+                              {s.nome_setor}
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         <div className="ml-4 text-xs text-muted-foreground">Competência</div>
-        <div className="flex gap-2 overflow-x-auto">
-          {optionsCompetencias.slice(0, 12).map((opt, i) => (
+        <div className="flex gap-2 items-center">
+          {optionsCompetencias.slice(0, 5).map((opt, i) => (
             <button
               key={`${String(opt.id)}-${i}`}
               className={`rounded-full px-3 py-1 text-xs border ${isCompetenciaSelected(opt.id as any) ? 'bg-primary text-primary-foreground' : 'bg-transparent hover:bg-accent'}`}
               onClick={() => setSelectedCompetenciaId(opt.id as any)}
             >{opt.nome}</button>
           ))}
+          {optionsCompetencias.length > 5 && (
+            <div className="relative" ref={competenciasRef}>
+              <button
+                className={`rounded-full px-3 py-1 text-xs border ${showCompetenciasDropdown ? 'bg-primary text-primary-foreground' : 'bg-transparent hover:bg-accent'}`}
+                onClick={() => setShowCompetenciasDropdown((v) => !v)}
+              >
+                ...
+              </button>
+              {showCompetenciasDropdown && (
+                <div className="absolute z-20 mt-1 w-56 rounded-md border bg-popover shadow-xs">
+                  <Command>
+                    <CommandInput placeholder="Filtrar competência..." value={competenciaQuery} onValueChange={setCompetenciaQuery} />
+                    <CommandList>
+                      <CommandEmpty>Nenhuma competência</CommandEmpty>
+                      <CommandGroup>
+                        {optionsCompetencias
+                          .filter(opt => opt.nome.toLowerCase().includes(competenciaQuery.toLowerCase()))
+                          .map((opt) => (
+                            <CommandItem 
+                              key={String(opt.id)} 
+                              onSelect={() => { 
+                                setSelectedCompetenciaId(opt.id as any)
+                                setShowCompetenciasDropdown(false)
+                                setCompetenciaQuery('')
+                              }}
+                            >
+                              {opt.nome}
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* KPIs */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardDescription>Colaboradores</CardDescription>
             <Users className="size-5 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="flex items-end justify-between">
+            <div className="flex items-end justify-between relative">
               <div className="text-3xl font-bold">{loading ? '—' : kpis.totalColab}</div>
-              <svg width="120" height="32" className="opacity-70">
-                <path d={sparklinePath(serieEvolucao.map(p => p.value))} stroke="currentColor" className="text-blue-500" strokeWidth="2" fill="none" />
-              </svg>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardDescription>Ativos</CardDescription>
-            <TrendingUp className="size-5 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <div className="text-3xl font-bold">{loading ? '—' : kpis.ativos}</div>
-              <ArrowUpRight className="size-4 text-emerald-500" />
+              <div className="relative">
+                <svg 
+                  ref={sparklineRef}
+                  width="120" 
+                  height="32" 
+                  className="opacity-70 cursor-pointer"
+                  onMouseMove={(e) => {
+                    if (!sparklineRef.current) return
+                    const rect = sparklineRef.current.getBoundingClientRect()
+                    const x = e.clientX - rect.left
+                    const width = 120
+                    const padding = 2
+                    const step = (width - padding * 2) / (serieEvolucao.length - 1 || 1)
+                    const index = Math.round((x - padding) / step)
+                    const clampedIndex = Math.max(0, Math.min(serieEvolucao.length - 1, index))
+                    const point = serieEvolucao[clampedIndex]
+                    if (point) {
+                      setSparklineTooltip({
+                        x: e.clientX,
+                        y: e.clientY,
+                        label: point.dateLabel,
+                        value: point.value
+                      })
+                    }
+                  }}
+                  onMouseLeave={() => setSparklineTooltip(null)}
+                >
+                  <path 
+                    d={sparklinePath(serieEvolucao.map(p => p.value))} 
+                    stroke="currentColor" 
+                    className="text-blue-500" 
+                    strokeWidth="2" 
+                    fill="none" 
+                  />
+                </svg>
+                {sparklineTooltip && (
+                  <div
+                    className="fixed z-50 px-3 py-1.5 text-xs bg-popover border rounded shadow-lg pointer-events-none whitespace-nowrap"
+                    style={{
+                      left: `${sparklineTooltip.x + 10}px`,
+                      top: `${sparklineTooltip.y - 40}px`,
+                    }}
+                  >
+                    <div className="font-medium">{sparklineTooltip.label}</div>
+                    <div className="text-muted-foreground">{sparklineTooltip.value} colaborador{sparklineTooltip.value !== 1 ? 'es' : ''}</div>
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -471,12 +622,30 @@ export function HomeDiretor() {
               <div className="text-sm text-muted-foreground">Selecione uma competência acima para ver a distribuição de níveis.</div>
             ) : (
               <ChartContainer config={profChartConfig} className="w-full h-80 aspect-auto text-primary">
-                <BarChart data={distribuicaoProeficiencia} margin={{ left: 12, right: 12, top: 4, bottom: 4 }} barSize={28}>
+                <BarChart 
+                  data={distribuicaoProeficiencia} 
+                  margin={{ left: 12, right: 12, top: 4, bottom: 4 }} 
+                  barSize={28}
+                >
                   <CartesianGrid vertical={false} strokeDasharray="3 3" />
                   <XAxis dataKey="nivel" tickLine={false} axisLine={false} tickMargin={8} />
                   <YAxis hide tickLine={false} axisLine={false} />
                   <ChartTooltip cursor={{ fill: 'hsl(var(--muted))' }} content={<ChartTooltipContent hideLabel />} />
-                  <Bar dataKey="qtd" fill="currentColor" fillOpacity={0.9} radius={[6,6,0,0]} />
+                  <Bar 
+                    dataKey="qtd" 
+                    fill="currentColor" 
+                    fillOpacity={0.9} 
+                    radius={[6,6,0,0]} 
+                    style={{ cursor: 'pointer' }}
+                    onClick={(data: any) => {
+                      if (data && data.nivel !== undefined && typeof selectedCompetenciaId === 'number') {
+                        const qs = new URLSearchParams()
+                        qs.set('competencia', String(selectedCompetenciaId))
+                        qs.set('proeficiencia', String(data.nivel))
+                        navigate(`/dashboard/colaboradores?${qs.toString()}`)
+                      }
+                    }}
+                  />
                 </BarChart>
               </ChartContainer>
             )}
