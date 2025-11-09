@@ -46,8 +46,15 @@ export function AvatarEditorModal({ open, onClose, src, onPick, onSave }: Props)
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
-      <Card className="w-full max-w-md">
+    <div
+      className="fixed inset-0 z-[70] grid place-items-center bg-black/50 p-4 pointer-events-auto"
+      role="dialog"
+      aria-modal="true"
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <Card className="w-full max-w-md" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
         <CardHeader>
           <CardTitle>Foto de perfil</CardTitle>
           <CardDescription>Selecione e ajuste a imagem para o avatar</CardDescription>

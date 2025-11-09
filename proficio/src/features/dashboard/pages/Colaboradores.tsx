@@ -5,7 +5,8 @@ import { Button } from '@/shared/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { api } from '@/shared/lib/api'
 import type { Colaborador, Setor, Equipe, Cargo } from '@/shared/types'
-import { List, LayoutGrid, Plus } from 'lucide-react'
+import { List, LayoutGrid, Plus, Camera } from 'lucide-react'
+import { format as formatDateFns } from 'date-fns'
 import { CollaboratorProfileModal } from '@/features/dashboard/components/CollaboratorProfileModal'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { ButtonGroup } from '@/shared/components/ui/button-group'
@@ -19,6 +20,7 @@ import { toast } from 'sonner'
 import { Item, ItemContent, ItemGroup, ItemHeader, ItemMedia, ItemTitle } from '@/shared/components/ui/item'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 import { AvatarEditorModal } from '@/features/dashboard/components/AvatarEditorModal'
+import { DatePicker } from '@/shared/components/ui/date-picker'
 
 type Gender = 'Male' | 'Female'
 
@@ -93,6 +95,7 @@ export function Colaboradores() {
   const [novoSetorFiltro, setNovoSetorFiltro] = useState<number | ''>('')
   const [novoSenha, setNovoSenha] = useState('')
   const [novoGenero, setNovoGenero] = useState<'Masculino' | 'Feminino' | ''>('')
+  const [novoNascimento, setNovoNascimento] = useState<Date | undefined>(undefined)
   const [saving, setSaving] = useState(false)
   const [newAvatarOpen, setNewAvatarOpen] = useState(false)
   const [newAvatarSrc, setNewAvatarSrc] = useState<string | null>(null)
@@ -307,14 +310,30 @@ export function Colaboradores() {
               <div className="grid gap-4 py-2 md:grid-cols-[220px_1fr]">
                 <div className="space-y-2">
                   <div className="text-xs text-muted-foreground">Foto de perfil (opcional)</div>
-                  <div className="grid place-items-center rounded-md border border-dashed bg-muted/40 px-3 py-6 text-center cursor-pointer hover:bg-muted/60"
-                    onClick={() => newAvatarInputRef.current?.click()}>
-                    <div className="text-sm text-muted-foreground">Clique para selecionar</div>
-                    <div className="text-xs text-muted-foreground">PNG ou JPG até 5MB</div>
+                  <div className="relative w-fit mx-auto">
+                    <Avatar className="size-24 ring-2 ring-background shadow-md">
+                      <AvatarImage src={newAvatarBase64 ?? undefined} alt="Prévia" />
+                      <AvatarFallback className="text-[0px]">
+                        {inferGenderFromName(novoNome?.split(' ')?.[0]) === 'Female' ? (
+                          <span className="text-pink-600">
+                            <FemaleAvatarIcon />
+                          </span>
+                        ) : (
+                          <span className="text-blue-600">
+                            <MaleAvatarIcon />
+                          </span>
+                        )}
+                      </AvatarFallback>
+                    </Avatar>
+                    <button
+                      type="button"
+                      onClick={() => { setNewAvatarOpen(true); setNewAvatarSrc(null) }}
+                      className="absolute -bottom-2 -right-2 grid place-items-center size-8 rounded-full bg-primary text-primary-foreground shadow ring-2 ring-background hover:brightness-95"
+                      aria-label="Selecionar foto de perfil"
+                    >
+                      <Camera className="size-4" />
+                    </button>
                   </div>
-                  {newAvatarBase64 && (
-                    <img src={newAvatarBase64} alt="Prévia" className="mt-2 h-24 w-24 rounded-full object-cover mx-auto" />
-                  )}
                   <input ref={newAvatarInputRef} type="file" accept="image/*" className="hidden"
                     onChange={(e) => {
                       const f = e.target.files?.[0]
@@ -339,6 +358,10 @@ export function Colaboradores() {
                   <div className="grid gap-1">
                     <Label htmlFor="email-colab">Email *</Label>
                     <Input id="email-colab" type="email" value={novoEmail} onChange={(e) => setNovoEmail(e.target.value)} />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label>Data de nascimento</Label>
+                    <DatePicker value={novoNascimento} onChange={setNovoNascimento} />
                   </div>
                   <div className="grid gap-1 md:grid-cols-3 md:gap-3">
                     <div className="grid gap-1">
@@ -435,16 +458,18 @@ export function Colaboradores() {
                         role: novoRole as any,
                         senha: novoSenha as any,
                         genero: (novoGenero || undefined) as any,
+                        dataNascimento: novoNascimento ? formatDateFns(novoNascimento, 'yyyy-MM-dd') : undefined,
                         idCargo: (novoCargo as number),
                       }
                       const { data } = await api.post<Colaborador>('/colaboradores', payload)
                       let created = data
-                      // se tiver avatar, salva depois
+                      // se tiver avatar, salva e já reflete no item criado
                       if (newAvatarBase64) {
                         try {
                           const idNew = (created as any)?.id ?? (created as any)?.id_colaborador
                           if (idNew) await api.patch(`/colaboradores/${encodeURIComponent(idNew)}/perfil`, { avatar: newAvatarBase64 })
                         } catch {}
+                        ;(created as any).avatar = newAvatarBase64
                       }
                       setItems((prev) => [...prev, created])
                       toast.success('Colaborador criado')
@@ -456,6 +481,7 @@ export function Colaboradores() {
                       setNovoRole('Colaborador')
                       setNovoSenha(generateRandomPassword())
                       setNovoGenero('')
+                      setNovoNascimento(undefined)
                       setNewAvatarBase64(null)
                     } finally {
                       setSaving(false)
