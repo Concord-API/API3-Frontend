@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { Input } from '@/shared/components/ui/input'
 import { Button } from '@/shared/components/ui/button'
-// removed unused Card imports after redesign
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { api } from '@/shared/lib/api'
-import type { Colaborador, Setor, Equipe, Cargo } from '@/shared/types'
+import type { Colaborador, Setor, Equipe, Cargo, Competencia, ColaboradorCompetencia } from '@/shared/types'
 import { List, LayoutGrid, Plus, Camera } from 'lucide-react'
 import { format as formatDateFns } from 'date-fns'
 import { CollaboratorProfileModal } from '@/features/dashboard/components/CollaboratorProfileModal'
@@ -66,8 +65,12 @@ export function Colaboradores() {
   const params = new URLSearchParams(location.search)
   const setorParam = params.get('setor')
   const equipeParam = params.get('equipe')
+  const competenciaParam = params.get('competencia')
+  const proeficienciaParam = params.get('proeficiencia')
   const filterSetorFromUrl = setorParam ? Number(setorParam) : NaN
   const filterEquipeFromUrl = equipeParam ? Number(equipeParam) : NaN
+  const filterCompetenciaFromUrl = competenciaParam ? Number(competenciaParam) : NaN
+  const filterProeficienciaFromUrl = proeficienciaParam ? Number(proeficienciaParam) : NaN
 
   const [mode, setMode] = useState<ViewMode>('table')
   const [q, setQ] = useState('')
@@ -77,14 +80,21 @@ export function Colaboradores() {
   const [setores, setSetores] = useState<Setor[]>([])
   const [equipes, setEquipes] = useState<Equipe[]>([])
   const [cargos, setCargos] = useState<Cargo[]>([])
+  const [competencias, setCompetencias] = useState<Competencia[]>([])
+  const [competenciasByColab, setCompetenciasByColab] = useState<Record<number, ColaboradorCompetencia[]>>({})
   const [selectedSetor, setSelectedSetor] = useState<number | 'all'>(isFinite(filterSetorFromUrl) ? filterSetorFromUrl : 'all')
   const [selectedEquipe, setSelectedEquipe] = useState<number | 'all'>(isFinite(filterEquipeFromUrl) ? filterEquipeFromUrl : 'all')
+  const [selectedCompetencia, setSelectedCompetencia] = useState<number | 'all'>(isFinite(filterCompetenciaFromUrl) ? filterCompetenciaFromUrl : 'all')
+  const [selectedProeficiencia, setSelectedProeficiencia] = useState<number | 'all'>(isFinite(filterProeficienciaFromUrl) ? filterProeficienciaFromUrl : 'all')
   const [showSetor, setShowSetor] = useState(false)
   const [showEquipe, setShowEquipe] = useState(false)
+  const [showCompetencia, setShowCompetencia] = useState(false)
   const [setorQuery, setSetorQuery] = useState('')
   const [equipeQuery, setEquipeQuery] = useState('')
+  const [competenciaQuery, setCompetenciaQuery] = useState('')
   const setorRef = useRef<HTMLDivElement | null>(null)
   const equipeRef = useRef<HTMLDivElement | null>(null)
+  const competenciaRef = useRef<HTMLDivElement | null>(null)
   const [addOpen, setAddOpen] = useState(false)
   const [novoNome, setNovoNome] = useState('')
   const [novoSobrenome, setNovoSobrenome] = useState('')
@@ -116,8 +126,10 @@ export function Colaboradores() {
       const target = e.target as Node | null
       const clickedInsideSetor = setorRef.current?.contains(target as Node) ?? false
       const clickedInsideEquipe = equipeRef.current?.contains(target as Node) ?? false
+      const clickedInsideCompetencia = competenciaRef.current?.contains(target as Node) ?? false
       if (!clickedInsideSetor) setShowSetor(false)
       if (!clickedInsideEquipe) setShowEquipe(false)
+      if (!clickedInsideCompetencia) setShowCompetencia(false)
     }
     document.addEventListener('mousedown', onDocMouseDown)
     return () => document.removeEventListener('mousedown', onDocMouseDown)
@@ -130,8 +142,9 @@ export function Colaboradores() {
       api.get<any[]>('/setores'),
       api.get<any[]>('/equipes?status=all'),
       api.get<Cargo[]>('/cargos'),
+      api.get<Competencia[]>('/competencias'),
     ])
-      .then(([c, s, e, cg]) => {
+      .then(([c, s, e, cg, comps]) => {
         setItems(c.data)
         const mappedSetores: Setor[] = (s.data || []).map((vm: any) => ({
           id_setor: vm.id ?? vm.id_setor,
@@ -150,12 +163,17 @@ export function Colaboradores() {
         }))
         setEquipes(mappedEquipes)
         setCargos(cg.data as any)
+        const mappedCompetencias: Competencia[] = (comps.data || []).map((vm: any) => ({
+          id_competencia: vm.id ?? vm.id_competencia ?? vm.idCompetencia ?? 0,
+          nome: vm.nome ?? vm.name ?? '',
+          tipo: Number(vm.tipo ?? 0) as 0 | 1,
+        }))
+        setCompetencias(mappedCompetencias)
       })
       .finally(() => setInitialLoading(false))
   }, [])
 
   useEffect(() => {
-    // reset equipe selecionada quando filtro de setor muda
     setNovoEquipe('none')
   }, [novoSetorFiltro])
 
@@ -165,6 +183,67 @@ export function Colaboradores() {
       setMyTeamId(res.data?.equipe?.id_equipe ?? null)
     })
   }, [user?.id])
+
+  useEffect(() => {
+    async function loadCompetenciasByColab() {
+      if (!items.length || !competencias.length) return
+      try {
+        const nameToId = new Map<string, number>()
+        for (const c of competencias) nameToId.set(String(c.nome).toLowerCase(), c.id_competencia)
+
+        const pairs = await Promise.all(
+          items.map(async (col) => {
+            const colabId = (col as any).id_colaborador ?? (col as any).id
+            if (!colabId || !Number.isFinite(Number(colabId))) {
+              return [colabId, []] as const
+            }
+            try {
+              const perfil = await api.get<any>(`/colaboradores/${encodeURIComponent(colabId)}/perfil`)
+              const raw = Array.isArray(perfil.data?.competencias) ? perfil.data.competencias : []
+              const normalized: ColaboradorCompetencia[] = raw.map((it: any) => ({
+                id: Number(it?.id ?? 0),
+                id_colaborador: Number(colabId),
+                id_competencia: Number(it?.id_competencia ?? it?.competencia?.id_competencia ?? it?.competenciaId ?? 0),
+                proeficiencia: Number(it?.proeficiencia ?? 0),
+                ordem: it?.ordem ?? (null as unknown as number),
+                competencia: competencias.find(c => c.id_competencia === Number(it?.id_competencia ?? it?.competencia?.id_competencia ?? it?.competenciaId ?? 0)),
+              }))
+              return [colabId, normalized] as const
+            } catch {
+              try {
+                const res = await api.get<any[]>(`/colaboradores/${encodeURIComponent(colabId)}/competencias`)
+                const raw = Array.isArray(res.data) ? res.data : []
+                const normalized: ColaboradorCompetencia[] = []
+                for (const it of raw) {
+                  const maybeId: number | undefined = it?.id_competencia ?? it?.competencia?.id_competencia ?? nameToId.get(String(it?.nome ?? '').toLowerCase())
+                  if (!maybeId) continue
+                  normalized.push({
+                    id: Number(it?.id ?? 0),
+                    id_colaborador: Number(colabId),
+                    id_competencia: Number(maybeId),
+                    proeficiencia: Number(it?.proeficiencia ?? 0),
+                    ordem: it?.ordem ?? (null as unknown as number),
+                    competencia: competencias.find(c => c.id_competencia === Number(maybeId)),
+                  })
+                }
+                return [colabId, normalized] as const
+              } catch {
+                return [colabId, []] as const
+              }
+            }
+          })
+        )
+        const map: Record<number, ColaboradorCompetencia[]> = {}
+        for (const [id, list] of pairs) {
+          if (id && Number.isFinite(Number(id))) {
+            map[Number(id)] = [...list]
+          }
+        }
+        setCompetenciasByColab(map)
+      } catch {}
+    }
+    loadCompetenciasByColab()
+  }, [items, competencias])
 
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase()
@@ -189,9 +268,25 @@ export function Colaboradores() {
       ) === selectedEquipe)
     }
 
+    if ((user?.role === Roles.Diretor || user?.role === Roles.Gestor) && selectedCompetencia !== 'all') {
+      base = base.filter(c => {
+        const colabId = (c as any).id_colaborador ?? (c as any).id
+        if (!colabId || !Number.isFinite(Number(colabId))) return false
+        const list = competenciasByColab[Number(colabId)] || []
+        const hasCompetencia = list.some(cc => {
+          if (cc.id_competencia !== selectedCompetencia) return false
+          if (selectedProeficiencia !== 'all') {
+            return cc.proeficiencia === selectedProeficiencia
+          }
+          return true
+        })
+        return hasCompetencia
+      })
+    }
+
     if (!t) return base
     return base.filter(c => `${c.nome} ${c.sobrenome}`.toLowerCase().includes(t) || (c as any).email?.toLowerCase()?.includes(t))
-  }, [q, items, user?.role, myTeamId, selectedSetor, selectedEquipe])
+  }, [q, items, user?.role, myTeamId, selectedSetor, selectedEquipe, selectedCompetencia, selectedProeficiencia, competenciasByColab])
 
   if (initialLoading) {
     return (
@@ -245,9 +340,8 @@ export function Colaboradores() {
         </div>
         {(user?.role === Roles.Diretor || user?.role === Roles.Gestor) && (
           <>
-            {/* Combobox Setor */}
             <div className="relative" ref={setorRef}>
-              <div className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm cursor-pointer" onClick={() => { setShowSetor((v) => !v); setShowEquipe(false) }}>
+              <div className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm cursor-pointer" onClick={() => { setShowSetor((v) => !v); setShowEquipe(false); setShowCompetencia(false) }}>
                 <span className="truncate max-w-[12rem]">{selectedSetor === 'all' ? 'Todos os setores' : setores.find(s => s.id_setor === selectedSetor)?.nome_setor ?? 'Setor'}</span>
                 <ChevronDown className="size-4 opacity-60" />
               </div>
@@ -258,9 +352,28 @@ export function Colaboradores() {
                     <CommandList>
                       <CommandEmpty>Nenhum setor</CommandEmpty>
                       <CommandGroup>
-                        <CommandItem onSelect={() => { setSelectedSetor('all'); setSelectedEquipe('all'); setShowSetor(false); setSetorQuery(''); navigate('/dashboard/colaboradores') }}>Todos</CommandItem>
+                        <CommandItem onSelect={() => { 
+                          setSelectedSetor('all'); 
+                          setSelectedEquipe('all'); 
+                          setShowSetor(false); 
+                          setSetorQuery(''); 
+                          const qs = new URLSearchParams(); 
+                          if (selectedCompetencia !== 'all') qs.set('competencia', String(selectedCompetencia)); 
+                          if (selectedProeficiencia !== 'all') qs.set('proeficiencia', String(selectedProeficiencia)); 
+                          navigate(qs.toString() ? `/dashboard/colaboradores?${qs.toString()}` : '/dashboard/colaboradores') 
+                        }}>Todos</CommandItem>
                         {setores.filter(s => s.nome_setor.toLowerCase().includes(setorQuery.toLowerCase())).map(s => (
-                          <CommandItem key={s.id_setor} onSelect={() => { setSelectedSetor(s.id_setor); setSelectedEquipe('all'); setShowSetor(false); setSetorQuery(''); navigate(`/dashboard/colaboradores?setor=${s.id_setor}`) }}>{s.nome_setor}</CommandItem>
+                          <CommandItem key={s.id_setor} onSelect={() => { 
+                            setSelectedSetor(s.id_setor); 
+                            setSelectedEquipe('all'); 
+                            setShowSetor(false); 
+                            setSetorQuery(''); 
+                            const qs = new URLSearchParams(); 
+                            qs.set('setor', String(s.id_setor)); 
+                            if (selectedCompetencia !== 'all') qs.set('competencia', String(selectedCompetencia)); 
+                            if (selectedProeficiencia !== 'all') qs.set('proeficiencia', String(selectedProeficiencia)); 
+                            navigate(`/dashboard/colaboradores?${qs.toString()}`) 
+                          }}>{s.nome_setor}</CommandItem>
                         ))}
                       </CommandGroup>
                     </CommandList>
@@ -268,9 +381,8 @@ export function Colaboradores() {
                 </div>
               )}
             </div>
-            {/* Combobox Equipe */}
             <div className="relative" ref={equipeRef}>
-              <div className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm cursor-pointer" onClick={() => { setShowEquipe((v) => !v); setShowSetor(false) }}>
+              <div className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm cursor-pointer" onClick={() => { setShowEquipe((v) => !v); setShowSetor(false); setShowCompetencia(false) }}>
                 <span className="truncate max-w-[12rem]">{selectedEquipe === 'all' ? 'Todas as equipes' : equipes.find(e => e.id_equipe === selectedEquipe)?.nome_equipe ?? 'Equipe'}</span>
                 <ChevronDown className="size-4 opacity-60" />
               </div>
@@ -281,11 +393,30 @@ export function Colaboradores() {
                     <CommandList>
                       <CommandEmpty>Nenhuma equipe</CommandEmpty>
                       <CommandGroup>
-                        <CommandItem onSelect={() => { setSelectedEquipe('all'); setShowEquipe(false); setEquipeQuery(''); navigate(selectedSetor === 'all' ? '/dashboard/colaboradores' : `/dashboard/colaboradores?setor=${selectedSetor}`) }}>Todas</CommandItem>
+                        <CommandItem onSelect={() => { 
+                          setSelectedEquipe('all'); 
+                          setShowEquipe(false); 
+                          setEquipeQuery(''); 
+                          const qs = new URLSearchParams(); 
+                          if (selectedSetor !== 'all') qs.set('setor', String(selectedSetor)); 
+                          if (selectedCompetencia !== 'all') qs.set('competencia', String(selectedCompetencia)); 
+                          if (selectedProeficiencia !== 'all') qs.set('proeficiencia', String(selectedProeficiencia)); 
+                          navigate(qs.toString() ? `/dashboard/colaboradores?${qs.toString()}` : '/dashboard/colaboradores') 
+                        }}>Todas</CommandItem>
                         {(selectedSetor === 'all' ? equipes : equipes.filter(e => e.id_setor === selectedSetor))
                           .filter(e => e.nome_equipe.toLowerCase().includes(equipeQuery.toLowerCase()))
                           .map(e => (
-                            <CommandItem key={e.id_equipe} onSelect={() => { setSelectedEquipe(e.id_equipe); setShowEquipe(false); setEquipeQuery(''); const qs = new URLSearchParams(); if (selectedSetor !== 'all') qs.set('setor', String(selectedSetor)); qs.set('equipe', String(e.id_equipe)); navigate(`/dashboard/colaboradores?${qs.toString()}`) }}>{e.nome_equipe}</CommandItem>
+                            <CommandItem key={e.id_equipe} onSelect={() => { 
+                              setSelectedEquipe(e.id_equipe); 
+                              setShowEquipe(false); 
+                              setEquipeQuery(''); 
+                              const qs = new URLSearchParams(); 
+                              if (selectedSetor !== 'all') qs.set('setor', String(selectedSetor)); 
+                              qs.set('equipe', String(e.id_equipe)); 
+                              if (selectedCompetencia !== 'all') qs.set('competencia', String(selectedCompetencia)); 
+                              if (selectedProeficiencia !== 'all') qs.set('proeficiencia', String(selectedProeficiencia)); 
+                              navigate(`/dashboard/colaboradores?${qs.toString()}`) 
+                            }}>{e.nome_equipe}</CommandItem>
                           ))}
                       </CommandGroup>
                     </CommandList>
@@ -293,6 +424,51 @@ export function Colaboradores() {
                 </div>
               )}
             </div>
+            {user?.role === Roles.Diretor && (
+              <div className="relative" ref={competenciaRef}>
+                <div className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm cursor-pointer" onClick={() => { setShowCompetencia((v) => !v); setShowSetor(false); setShowEquipe(false) }}>
+                  <span className="truncate max-w-[12rem]">{selectedCompetencia === 'all' ? 'Todas as competências' : competencias.find(c => c.id_competencia === selectedCompetencia)?.nome ?? 'Competência'}</span>
+                  <ChevronDown className="size-4 opacity-60" />
+                </div>
+                {showCompetencia && (
+                  <div className="absolute z-20 mt-1 w-56 rounded-md border bg-popover shadow-xs">
+                    <Command>
+                      <CommandInput placeholder="Filtrar competência..." value={competenciaQuery} onValueChange={setCompetenciaQuery} />
+                      <CommandList>
+                        <CommandEmpty>Nenhuma competência</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem onSelect={() => { 
+                            setSelectedCompetencia('all'); 
+                            setShowCompetencia(false); 
+                            setCompetenciaQuery(''); 
+                            const qs = new URLSearchParams(); 
+                            if (selectedSetor !== 'all') qs.set('setor', String(selectedSetor)); 
+                            if (selectedEquipe !== 'all') qs.set('equipe', String(selectedEquipe)); 
+                            if (selectedProeficiencia !== 'all') qs.set('proeficiencia', String(selectedProeficiencia)); 
+                            navigate(qs.toString() ? `/dashboard/colaboradores?${qs.toString()}` : '/dashboard/colaboradores') 
+                          }}>Todas</CommandItem>
+                          {competencias
+                            .filter(c => c.nome.toLowerCase().includes(competenciaQuery.toLowerCase()))
+                            .map(c => (
+                              <CommandItem key={c.id_competencia} onSelect={() => { 
+                                setSelectedCompetencia(c.id_competencia); 
+                                setShowCompetencia(false); 
+                                setCompetenciaQuery(''); 
+                                const qs = new URLSearchParams(); 
+                                if (selectedSetor !== 'all') qs.set('setor', String(selectedSetor)); 
+                                if (selectedEquipe !== 'all') qs.set('equipe', String(selectedEquipe)); 
+                                qs.set('competencia', String(c.id_competencia)); 
+                                if (selectedProeficiencia !== 'all') qs.set('proeficiencia', String(selectedProeficiencia)); 
+                                navigate(`/dashboard/colaboradores?${qs.toString()}`) 
+                              }}>{c.nome}</CommandItem>
+                            ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
         <div className="ml-auto flex items-center gap-2">
@@ -393,7 +569,6 @@ export function Colaboradores() {
                       </select>
                     </div>
                   </div>
-                  {/* Setor filtro em linha curta */}
                   <div className="grid gap-1">
                     <Label>Setor (filtro)</Label>
                     <select
@@ -408,7 +583,6 @@ export function Colaboradores() {
                     </select>
                   </div>
 
-                  {/* Equipe - campo longo ocupa a linha inteira */}
                   <div className="grid gap-1">
                     <Label>Equipe *</Label>
                     <select
@@ -423,7 +597,6 @@ export function Colaboradores() {
                     </select>
                   </div>
 
-                  {/* Cargo - campo longo ocupa a linha inteira (sem filtro por setor) */}
                   <div className="grid gap-1">
                     <Label>Cargo *</Label>
                     <select
@@ -463,7 +636,6 @@ export function Colaboradores() {
                       }
                       const { data } = await api.post<Colaborador>('/colaboradores', payload)
                       let created = data
-                      // se tiver avatar, salva e já reflete no item criado
                       if (newAvatarBase64) {
                         try {
                           const idNew = (created as any)?.id ?? (created as any)?.id_colaborador
@@ -652,7 +824,6 @@ export function Colaboradores() {
         }}
       />
 
-      {/* util local */}
       {null as any}
     </div>
   )
