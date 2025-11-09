@@ -250,11 +250,10 @@ export function Colaboradores() {
     let base = items
 
     if (user?.role === Roles.Gestor) {
-      if (myTeamId != null) base = base.filter(c => (
-        (c as any).idEquipe ??
-        c.equipe?.id_equipe ??
-        (c as any).id_equipe
-      ) === myTeamId)
+      base = base.filter(c => {
+        const role = (c as any).role ?? c.role
+        return role !== Roles.Diretor
+      })
     } else {
       if (selectedSetor !== 'all') base = base.filter(c => (
         (c as any).idSetor ??
