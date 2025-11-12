@@ -179,7 +179,7 @@ export function Setores() {
                       onChange={(e) => setDiretorId(e.target.value ? Number(e.target.value) : 'none')}
                     >
                       <option value="">Sem diretor</option>
-                      {colaboradores.filter(c => (c as any).role === 'Diretor').map(c => {
+                      {colaboradores.filter(c => String(((c as any).cargo?.role ?? (c as any).role) ?? '') === 'Diretor').map(c => {
                         const cid = (c as any).id ?? (c as any).id_colaborador
                         return (
                           <option key={cid} value={cid}>{`${c.nome} ${c.sobrenome}`.trim()}</option>
@@ -480,7 +480,7 @@ export function Setores() {
                   onChange={(e) => setEditDiretorId(e.target.value ? Number(e.target.value) : 'none')}
                 >
                   <option value="">Sem diretor</option>
-                  {colaboradores.filter(c => (c as any).role === 'Diretor').map(c => {
+                  {colaboradores.filter(c => String(((c as any).cargo?.role ?? (c as any).role) ?? '') === 'Diretor').map(c => {
                     const cid = (c as any).id ?? (c as any).id_colaborador
                     return (
                       <option key={cid} value={cid}>{`${c.nome} ${c.sobrenome}`.trim()}</option>
