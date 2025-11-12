@@ -111,7 +111,10 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
   }, [team, data])
 
   const teamManager = useMemo(() => {
-    return teamMembers.find((c) => String((c as any).role) === 'Gestor') ?? null
+    return teamMembers.find((c) => {
+      const r = String(((c as any).cargo?.role ?? (c as any).role) ?? '')
+      return r === 'Gestor'
+    }) ?? null
   }, [teamMembers])
 
   const currentSetorId = useMemo(() => {
@@ -120,7 +123,10 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
 
   const teamDirector = useMemo(() => {
     if (!currentSetorId) return null
-    return team.find((c) => String((c as any).role) === 'Diretor' && (((c as any).idSetor ?? (c as any).id_setor) === currentSetorId)) ?? null
+    return team.find((c) => {
+      const r = String(((c as any).cargo?.role ?? (c as any).role) ?? '')
+      return r === 'Diretor' && (((c as any).idSetor ?? (c as any).id_setor) === currentSetorId)
+    }) ?? null
   }, [team, currentSetorId])
 
   function formatTenure(iso?: string | null) {
@@ -205,14 +211,8 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
                           : 'bg-purple-600 text-white border-purple-700'
                   const key = (cc as any)?.id ?? `${(cc as any)?.competencia?.id_competencia ?? (cc as any)?.competencia?.id ?? 'c'}_${cc.ordem ?? '0'}`
                   return (
-                    <span key={key} className={`relative inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
+                    <span key={key} className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
                       {cc.competencia?.nome}
-                      <span
-                        className="pointer-events-none absolute -top-2 -right-2 h-4 w-4 rounded-full bg-white text-[10px] leading-4 text-black text-center font-bold border shadow-sm"
-                        aria-hidden="true"
-                      >
-                        {level}
-                      </span>
                     </span>
                   )
                 })}
@@ -306,7 +306,7 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
 
                   <div className="flex flex-wrap justify-center gap-3">
                     {teamMembers
-                      .filter((m) => String((m as any).role) === 'Colaborador')
+                      .filter((m) => String(((m as any).cargo?.role ?? (m as any).role) ?? '') === 'Colaborador')
                       .map((m, index) => (
                     <div key={(m as any).id_colaborador ?? (m as any).id ?? index} className="rounded-lg border p-2 text-left hover:bg-accent/40 transition-colors cursor-pointer" onClick={() => setCurrentId(((m as any).id_colaborador ?? (m as any).id) as number)} role="button" tabIndex={0}>
                           <div className="flex items-center gap-2">
