@@ -8,7 +8,8 @@ import { Setores } from '@/features/dashboard/pages/Setores'
 import { Colaboradores } from '@/features/dashboard/pages/Colaboradores'
 import { Competencias } from '@/features/dashboard/pages/Competencias'
 import { Perfil } from '@/features/dashboard/pages/Perfil'
-import { Home, User, Users as UsersIcon, Sparkles, Building2, Layers, ClipboardList } from 'lucide-react'
+import { Home, User, Users as UsersIcon, Sparkles, Building2, Layers, ClipboardList, Briefcase } from 'lucide-react'
+import { Cargos } from '@/features/dashboard/pages/Cargos'
 import { Avaliacoes } from '@/features/dashboard/pages/Avaliacoes'
 
 export type DashboardRoute = {
@@ -31,6 +32,7 @@ export const dashboardRoutes: DashboardRoute[] = [
   { path: '', element: <HomeByRole />, label: 'Home', icon: Home, allowedRoles: [Roles.Colaborador, Roles.Gestor, Roles.Diretor], section: 'general' },
   { path: 'perfil', element: <Perfil />, label: 'Perfil', icon: User, allowedRoles: [Roles.Colaborador, Roles.Gestor, Roles.Diretor], section: 'general' },
   { path: 'competencias', element: <Competencias />, label: 'Minhas Competências', icon: Sparkles, allowedRoles: [Roles.Colaborador, Roles.Gestor, Roles.Diretor], section: 'general' },
+  { path: 'cargos', element: <Cargos />, label: 'Cargos', icon: Briefcase, allowedRoles: [Roles.Gestor, Roles.Diretor], section: 'org' },
   { path: 'setores', element: <Setores />, label: 'Setores', icon: Building2, allowedRoles: [Roles.Gestor, Roles.Diretor], section: 'org' },
   { path: 'equipes', element: <Equipes />, label: 'Equipes', icon: Layers, allowedRoles: [Roles.Gestor, Roles.Diretor], section: 'org' },
   { path: 'colaboradores', element: <Colaboradores />, label: 'Colaboradores', icon: UsersIcon, allowedRoles: [Roles.Gestor, Roles.Diretor], section: 'org' },
