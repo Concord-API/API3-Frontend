@@ -31,6 +31,7 @@ export function EvaluateCollaboratorModal({
   equipes,
 }: Props) {
   const [comments, setComments] = useState<string>('')
+  const [isPublic, setIsPublic] = useState<boolean>(true)
   const [selectedCompetencia, setSelectedCompetencia] = useState<number | ''>('')
   const [competenceEvaluations, setCompetenceEvaluations] = useState<Record<number, { rating: number | ''; review: string }>>({})
 
@@ -42,6 +43,7 @@ export function EvaluateCollaboratorModal({
   useEffect(() => {
     // Resetar campos ao mudar colaborador avaliado ou ao reabrir o modal
     setComments('')
+    setIsPublic(true)
     setSelectedCompetencia('')
     setCompetenceEvaluations({})
   }, [evaluationId, open])
@@ -108,6 +110,16 @@ export function EvaluateCollaboratorModal({
                       onChange={(e) => setComments(e.target.value)}
                       placeholder="Ex.: Resultados, comportamentos observados, metas batidas..."
                     />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="flag-publica"
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      checked={isPublic}
+                      onChange={(e) => setIsPublic(e.target.checked)}
+                    />
+                    <label htmlFor="flag-publica" className="text-sm">Tornar avaliação pública ao avaliado</label>
                   </div>
                 </div>
               </TabsContent>
@@ -216,7 +228,22 @@ export function EvaluateCollaboratorModal({
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
-              <Button onClick={() => { toast.success('Avaliação salva (local)'); onOpenChange(false) }}>Salvar</Button>
+              <Button onClick={() => {
+                const payload = {
+                  colaboradorId: evaluationId,
+                  resumo: comments?.trim() || null,
+                  publico: isPublic === true,
+                  competencias: Object.entries(competenceEvaluations).map(([id, v]) => ({
+                    competenciaId: Number(id),
+                    nota: v.rating === '' ? null : Number(v.rating),
+                    resenha: (v.review ?? '').trim() || null,
+                  })),
+                }
+                // TODO: integrar com endpoint real (POST /avaliacoes)
+                console.debug('Salvar avaliação (preview payload):', payload)
+                toast.success('Avaliação salva (local)')
+                onOpenChange(false)
+              }}>Salvar</Button>
             </div>
           </div>
         </ModalFooter>
