@@ -106,7 +106,8 @@ export function Equipes() {
   const recomputeGestores = useCallback(() => {
     const map: Record<number, Colaborador | undefined> = {}
     for (const c of colaboradores) {
-      if ((c as any).role === 'Gestor') {
+      const r = String(((c as any).cargo?.role ?? (c as any).role) ?? '')
+      if (r === 'Gestor') {
         const teamId = (c as any).id_equipe ?? c.equipe?.id_equipe
         if (teamId != null && map[teamId] == null) map[teamId] = c
       }
@@ -277,7 +278,7 @@ export function Equipes() {
                         onChange={(e) => setNovoGestor(e.target.value ? Number(e.target.value) : 'none')}
                       >
                         <option value="">Sem gestor</option>
-                        {colaboradores.filter(c => (c as any).role === 'Gestor').map((c, idx) => {
+                        {colaboradores.filter(c => String(((c as any).cargo?.role ?? (c as any).role) ?? '') === 'Gestor').map((c, idx) => {
                           const cid = (c as any).id ?? (c as any).id_colaborador ?? idx
                           return (
                             <option key={cid} value={cid}>{`${c.nome} ${c.sobrenome}`.trim()}</option>
@@ -593,7 +594,7 @@ export function Equipes() {
                   onChange={(e) => setEditGestor(e.target.value ? Number(e.target.value) : 'none')}
                 >
                   <option value="">Sem gestor</option>
-                  {colaboradores.filter(c => (c as any).role === 'Gestor').map((c, idx) => {
+                  {colaboradores.filter(c => String(((c as any).cargo?.role ?? (c as any).role) ?? '') === 'Gestor').map((c, idx) => {
                     const cid = (c as any).id ?? (c as any).id_colaborador ?? idx
                     return (
                       <option key={cid} value={cid}>{`${c.nome} ${c.sobrenome}`.trim()}</option>

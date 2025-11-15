@@ -4,8 +4,7 @@ import { Button } from '@/shared/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { api } from '@/shared/lib/api'
 import type { Colaborador, Setor, Equipe, Cargo, Competencia, ColaboradorCompetencia } from '@/shared/types'
-import { List, LayoutGrid, Plus, Camera } from 'lucide-react'
-import { format as formatDateFns } from 'date-fns'
+import { List, LayoutGrid, Plus } from 'lucide-react'
 import { CollaboratorProfileModal } from '@/features/dashboard/components/CollaboratorProfileModal'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { ButtonGroup } from '@/shared/components/ui/button-group'
@@ -13,48 +12,10 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Roles } from '@/shared/constants/roles'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/shared/components/ui/command'
 import { ChevronDown } from 'lucide-react'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/shared/components/ui/dialog'
-import { Label } from '@/shared/components/ui/label'
-import { toast } from 'sonner'
 import { Item, ItemContent, ItemGroup, ItemHeader, ItemMedia, ItemTitle } from '@/shared/components/ui/item'
 import { Skeleton } from '@/shared/components/ui/skeleton'
-import { AvatarEditorModal } from '@/features/dashboard/components/AvatarEditorModal'
-import { DatePicker } from '@/shared/components/ui/date-picker'
-
-type Gender = 'Male' | 'Female'
-
-function FemaleAvatarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" shapeRendering="geometricPrecision">
-      <circle cx="12" cy="8" r="4" fill="currentColor" />
-      <path d="M4 20a8 8 0 0 1 16 0" fill="none" stroke="currentColor" strokeWidth="2" />
-    </svg>
-  )
-}
-
-function MaleAvatarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" shapeRendering="geometricPrecision">
-      <circle cx="12" cy="7.5" r="3.5" fill="currentColor" />
-      <path d="M6 20c0-3.314 2.686-6 6-6s6 2.686 6 6" fill="none" stroke="currentColor" strokeWidth="2" />
-    </svg>
-  )
-}
-
-function inferGenderFromName(name: string | undefined): Gender {
-  const n = (name ?? '').trim().toLowerCase()
-  if (!n) return 'Male'
-  const FemaleNames = new Set([
-    'tainara','mariana','fernanda','patrícia','patricia'
-  ])
-  const MaleNames = new Set([
-    'adler','richard','lucas','bruno'
-  ])
-  if (FemaleNames.has(n)) return 'Female'
-  if (MaleNames.has(n)) return 'Male'
-  if (n.endsWith('a')) return 'Female'
-  return 'Male'
-}
+import { NewCollaboratorModal } from '@/features/dashboard/components/NewCollaboratorModal'
+import { EvaluateCollaboratorModal } from '@/features/dashboard/components/EvaluateCollaboratorModal'
 
 type ViewMode = 'table' | 'grid'
 
@@ -85,7 +46,7 @@ export function Colaboradores() {
   const [selectedSetor, setSelectedSetor] = useState<number | 'all'>(isFinite(filterSetorFromUrl) ? filterSetorFromUrl : 'all')
   const [selectedEquipe, setSelectedEquipe] = useState<number | 'all'>(isFinite(filterEquipeFromUrl) ? filterEquipeFromUrl : 'all')
   const [selectedCompetencia, setSelectedCompetencia] = useState<number | 'all'>(isFinite(filterCompetenciaFromUrl) ? filterCompetenciaFromUrl : 'all')
-  const [selectedProeficiencia, setSelectedProeficiencia] = useState<number | 'all'>(isFinite(filterProeficienciaFromUrl) ? filterProeficienciaFromUrl : 'all')
+  const [selectedProeficiencia] = useState<number | 'all'>(isFinite(filterProeficienciaFromUrl) ? filterProeficienciaFromUrl : 'all')
   const [showSetor, setShowSetor] = useState(false)
   const [showEquipe, setShowEquipe] = useState(false)
   const [showCompetencia, setShowCompetencia] = useState(false)
@@ -96,29 +57,9 @@ export function Colaboradores() {
   const equipeRef = useRef<HTMLDivElement | null>(null)
   const competenciaRef = useRef<HTMLDivElement | null>(null)
   const [addOpen, setAddOpen] = useState(false)
-  const [novoNome, setNovoNome] = useState('')
-  const [novoSobrenome, setNovoSobrenome] = useState('')
-  const [novoEmail, setNovoEmail] = useState('')
-  const [novoEquipe, setNovoEquipe] = useState<number | 'none'>('none')
-  const [novoRole, setNovoRole] = useState<'Diretor' | 'Gestor' | 'Colaborador'>('Colaborador')
-  const [novoCargo, setNovoCargo] = useState<number | ''>('')
-  const [novoSetorFiltro, setNovoSetorFiltro] = useState<number | ''>('')
-  const [novoSenha, setNovoSenha] = useState('')
-  const [novoGenero, setNovoGenero] = useState<'Masculino' | 'Feminino' | ''>('')
-  const [novoNascimento, setNovoNascimento] = useState<Date | undefined>(undefined)
-  const [saving, setSaving] = useState(false)
-  const [newAvatarOpen, setNewAvatarOpen] = useState(false)
-  const [newAvatarSrc, setNewAvatarSrc] = useState<string | null>(null)
-  const [newAvatarBase64, setNewAvatarBase64] = useState<string | null>(null)
-  const newAvatarInputRef = useRef<HTMLInputElement | null>(null)
+  const [evalOpen, setEvalOpen] = useState(false)
+  const [evaluationId, setEvaluationId] = useState<number | null>(null)
 
-  function generateRandomPassword() {
-    const base = 'trocar'
-    const pick = Math.floor(Math.random() * 3)
-    if (pick === 0) return base + Math.floor(Math.random() * 999 + 1)
-    if (pick === 1) return base + '!' + Math.floor(Math.random() * 9 + 1)
-    return base + Math.floor(Math.random() * 9 + 1)
-  }
   const [initialLoading, setInitialLoading] = useState(true)
 
   useEffect(() => {
@@ -172,10 +113,6 @@ export function Colaboradores() {
       })
       .finally(() => setInitialLoading(false))
   }, [])
-
-  useEffect(() => {
-    setNovoEquipe('none')
-  }, [novoSetorFiltro])
 
   useEffect(() => {
     if (!user?.id) return
@@ -429,241 +366,52 @@ export function Colaboradores() {
                   <span className="truncate max-w-[12rem]">{selectedCompetencia === 'all' ? 'Todas as competências' : competencias.find(c => c.id_competencia === selectedCompetencia)?.nome ?? 'Competência'}</span>
                   <ChevronDown className="size-4 opacity-60" />
                 </div>
-                {showCompetencia && (
-                  <div className="absolute z-20 mt-1 w-56 rounded-md border bg-popover shadow-xs">
-                    <Command>
-                      <CommandInput placeholder="Filtrar competência..." value={competenciaQuery} onValueChange={setCompetenciaQuery} />
-                      <CommandList>
-                        <CommandEmpty>Nenhuma competência</CommandEmpty>
-                        <CommandGroup>
-                          <CommandItem onSelect={() => { 
-                            setSelectedCompetencia('all'); 
-                            setShowCompetencia(false); 
-                            setCompetenciaQuery(''); 
-                            const qs = new URLSearchParams(); 
-                            if (selectedSetor !== 'all') qs.set('setor', String(selectedSetor)); 
-                            if (selectedEquipe !== 'all') qs.set('equipe', String(selectedEquipe)); 
-                            if (selectedProeficiencia !== 'all') qs.set('proeficiencia', String(selectedProeficiencia)); 
-                            navigate(qs.toString() ? `/dashboard/colaboradores?${qs.toString()}` : '/dashboard/colaboradores') 
-                          }}>Todas</CommandItem>
-                          {competencias
-                            .filter(c => c.nome.toLowerCase().includes(competenciaQuery.toLowerCase()))
-                            .map(c => (
-                              <CommandItem key={c.id_competencia} onSelect={() => { 
-                                setSelectedCompetencia(c.id_competencia); 
-                                setShowCompetencia(false); 
-                                setCompetenciaQuery(''); 
-                                const qs = new URLSearchParams(); 
-                                if (selectedSetor !== 'all') qs.set('setor', String(selectedSetor)); 
-                                if (selectedEquipe !== 'all') qs.set('equipe', String(selectedEquipe)); 
-                                qs.set('competencia', String(c.id_competencia)); 
-                                if (selectedProeficiencia !== 'all') qs.set('proeficiencia', String(selectedProeficiencia)); 
-                                navigate(`/dashboard/colaboradores?${qs.toString()}`) 
-                              }}>{c.nome}</CommandItem>
-                            ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </div>
-                )}
+              {showCompetencia && (
+                <div className="absolute z-20 mt-1 w-56 rounded-md border bg-popover shadow-xs">
+                  <Command>
+                    <CommandInput placeholder="Filtrar competência..." value={competenciaQuery} onValueChange={setCompetenciaQuery} />
+                    <CommandList>
+                      <CommandEmpty>Nenhuma competência</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem onSelect={() => { 
+                          setSelectedCompetencia('all'); 
+                          setShowCompetencia(false); 
+                          setCompetenciaQuery(''); 
+                          const qs = new URLSearchParams(); 
+                          if (selectedSetor !== 'all') qs.set('setor', String(selectedSetor)); 
+                          if (selectedEquipe !== 'all') qs.set('equipe', String(selectedEquipe)); 
+                          if (selectedProeficiencia !== 'all') qs.set('proeficiencia', String(selectedProeficiencia)); 
+                          navigate(qs.toString() ? `/dashboard/colaboradores?${qs.toString()}` : '/dashboard/colaboradores') 
+                        }}>Todas</CommandItem>
+                        {competencias
+                          .filter(c => c.nome.toLowerCase().includes(competenciaQuery.toLowerCase()))
+                          .map(c => (
+                            <CommandItem key={c.id_competencia} onSelect={() => { 
+                              setSelectedCompetencia(c.id_competencia); 
+                              setShowCompetencia(false); 
+                              setCompetenciaQuery(''); 
+                              const qs = new URLSearchParams(); 
+                              if (selectedSetor !== 'all') qs.set('setor', String(selectedSetor)); 
+                              if (selectedEquipe !== 'all') qs.set('equipe', String(selectedEquipe)); 
+                              qs.set('competencia', String(c.id_competencia)); 
+                              if (selectedProeficiencia !== 'all') qs.set('proeficiencia', String(selectedProeficiencia)); 
+                              navigate(`/dashboard/colaboradores?${qs.toString()}`) 
+                            }}>{c.nome}</CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </div>
+              )}
               </div>
             )}
           </>
         )}
         <div className="ml-auto flex items-center gap-2">
-          <Dialog open={addOpen} onOpenChange={(v) => { setAddOpen(v); if (!v) { setNewAvatarBase64(null); setNewAvatarSrc(null) } else { setNovoSenha(generateRandomPassword()) } }}>
-            <DialogTrigger asChild>
-              <Button size="icon" className="fixed bottom-6 right-6 h-10 p-4 w-auto rounded-lg   shadow-lg">
-                <Plus className="size-5" />
-                <p>Novo colaborador</p>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[720px]">
-              <DialogHeader>
-                <DialogTitle>Novo colaborador</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-2 md:grid-cols-[220px_1fr]">
-                <div className="space-y-2">
-                  <div className="text-xs text-muted-foreground">Foto de perfil (opcional)</div>
-                  <div className="relative w-fit mx-auto">
-                    <Avatar className="size-24 ring-2 ring-background shadow-md">
-                      <AvatarImage src={newAvatarBase64 ?? undefined} alt="Prévia" />
-                      <AvatarFallback className="text-[0px]">
-                        {inferGenderFromName(novoNome?.split(' ')?.[0]) === 'Female' ? (
-                          <span className="text-pink-600">
-                            <FemaleAvatarIcon />
-                          </span>
-                        ) : (
-                          <span className="text-blue-600">
-                            <MaleAvatarIcon />
-                          </span>
-                        )}
-                      </AvatarFallback>
-                    </Avatar>
-                    <button
-                      type="button"
-                      onClick={() => { setNewAvatarOpen(true); setNewAvatarSrc(null) }}
-                      className="absolute -bottom-2 -right-2 grid place-items-center size-8 rounded-full bg-primary text-primary-foreground shadow ring-2 ring-background hover:brightness-95"
-                      aria-label="Selecionar foto de perfil"
-                    >
-                      <Camera className="size-4" />
-                    </button>
-                  </div>
-                  <input ref={newAvatarInputRef} type="file" accept="image/*" className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0]
-                      if (!f) return
-                      const url = URL.createObjectURL(f)
-                      setNewAvatarSrc(url)
-                      setNewAvatarOpen(true)
-                    }}
-                  />
-                </div>
-                <div className="grid gap-3">
-                  <div className="grid gap-1 md:grid-cols-2 md:gap-3">
-                    <div className="grid gap-1">
-                      <Label htmlFor="nome-colab">Nome *</Label>
-                      <Input id="nome-colab" value={novoNome} onChange={(e) => setNovoNome(e.target.value)} />
-                    </div>
-                    <div className="grid gap-1">
-                      <Label htmlFor="sobrenome-colab">Sobrenome</Label>
-                      <Input id="sobrenome-colab" value={novoSobrenome} onChange={(e) => setNovoSobrenome(e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="grid gap-1">
-                    <Label htmlFor="email-colab">Email *</Label>
-                    <Input id="email-colab" type="email" value={novoEmail} onChange={(e) => setNovoEmail(e.target.value)} />
-                  </div>
-                  <div className="grid gap-1">
-                    <Label>Data de nascimento</Label>
-                    <DatePicker value={novoNascimento} onChange={setNovoNascimento} />
-                  </div>
-                  <div className="grid gap-1 md:grid-cols-3 md:gap-3">
-                    <div className="grid gap-1">
-                      <Label htmlFor="senha-colab">Senha *</Label>
-                      <Input id="senha-colab" type="text" value={novoSenha} readOnly />
-                    </div>
-                    <div className="grid gap-1">
-                      <Label>Role *</Label>
-                      <select
-                        className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                        value={novoRole}
-                        onChange={(e) => setNovoRole(e.target.value as any)}
-                      >
-                        {(user?.role === Roles.Diretor ? (['Diretor','Gestor','Colaborador'] as const) : (['Colaborador'] as const)).map(r => (
-                          <option key={r} value={r}>{r}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="grid gap-1">
-                      <Label>Gênero</Label>
-                      <select
-                        className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                        value={novoGenero}
-                        onChange={(e) => setNovoGenero(e.target.value as any)}
-                      >
-                        <option value="">—</option>
-                        <option value="Masculino">Masculino</option>
-                        <option value="Feminino">Feminino</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid gap-1">
-                    <Label>Setor (filtro)</Label>
-                    <select
-                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                      value={novoSetorFiltro === '' ? '' : String(novoSetorFiltro)}
-                      onChange={(e) => setNovoSetorFiltro(e.target.value ? Number(e.target.value) : '')}
-                    >
-                      <option value="">Todos</option>
-                      {setores.map(s => (
-                        <option key={s.id_setor} value={s.id_setor}>{s.nome_setor}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid gap-1">
-                    <Label>Equipe *</Label>
-                    <select
-                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                      value={novoEquipe === 'none' ? '' : String(novoEquipe)}
-                      onChange={(e) => setNovoEquipe(e.target.value ? Number(e.target.value) : 'none')}
-                    >
-                      <option value="">Selecione uma equipe</option>
-                      {(novoSetorFiltro === '' ? equipes : equipes.filter(eq => eq.id_setor === novoSetorFiltro)).map(eq => (
-                        <option key={eq.id_equipe} value={eq.id_equipe}>{eq.nome_equipe}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid gap-1">
-                    <Label>Cargo *</Label>
-                    <select
-                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                      value={novoCargo === '' ? '' : String(novoCargo)}
-                      onChange={(e) => setNovoCargo(e.target.value ? Number(e.target.value) : '')}
-                    >
-                      <option value="">Selecione um cargo</option>
-                      {cargos.map(c => (
-                        <option key={c.id_cargo} value={c.id_cargo}>{c.nome_cargo}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  disabled={saving || novoNome.trim().length === 0 || !novoEmail.trim() || novoEquipe === 'none' || !novoSenha.trim() || novoCargo === '' || (user?.role === Roles.Gestor && novoRole !== 'Colaborador')}
-                  onClick={async () => {
-                    const nome = novoNome.trim()
-                    const sobrenome = (novoSobrenome.trim() || '-')
-                    const email = novoEmail.trim()
-                    if (!nome || !email || novoEquipe === 'none' || !novoSenha.trim()) return
-                    setSaving(true)
-                    try {
-                      const payload: any = {
-                        nome,
-                        sobrenome,
-                        email,
-                        idEquipe: novoEquipe as number,
-                        status: true as any,
-                        role: novoRole as any,
-                        senha: novoSenha as any,
-                        genero: (novoGenero || undefined) as any,
-                        dataNascimento: novoNascimento ? formatDateFns(novoNascimento, 'yyyy-MM-dd') : undefined,
-                        idCargo: (novoCargo as number),
-                      }
-                      const { data } = await api.post<Colaborador>('/colaboradores', payload)
-                      let created = data
-                      if (newAvatarBase64) {
-                        try {
-                          const idNew = (created as any)?.id ?? (created as any)?.id_colaborador
-                          if (idNew) await api.patch(`/colaboradores/${encodeURIComponent(idNew)}/perfil`, { avatar: newAvatarBase64 })
-                        } catch {}
-                        ;(created as any).avatar = newAvatarBase64
-                      }
-                      setItems((prev) => [...prev, created])
-                      toast.success('Colaborador criado')
-                      setAddOpen(false)
-                      setNovoNome('')
-                      setNovoSobrenome('')
-                      setNovoEmail('')
-                      setNovoEquipe('none')
-                      setNovoRole('Colaborador')
-                      setNovoSenha(generateRandomPassword())
-                      setNovoGenero('')
-                      setNovoNascimento(undefined)
-                      setNewAvatarBase64(null)
-                    } finally {
-                      setSaving(false)
-                    }
-                  }}
-                >
-                  {saving ? 'Salvando...' : 'Salvar'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button size="icon" className="fixed bottom-6 right-6 h-10 p-4 w-auto rounded-lg   shadow-lg" onClick={() => setAddOpen(true)}>
+            <Plus className="size-5" />
+            <p>Novo colaborador</p>
+          </Button>
           <ButtonGroup>
             <Button
               variant={mode === 'table' ? 'default' : 'outline'}
@@ -709,16 +457,8 @@ export function Colaboradores() {
                           const s = String(a)
                           return s.startsWith('data:') ? s : `data:image/png;base64,${s}`
                         })()} alt="" />
-                        <AvatarFallback className="text-[0px]">
-                          {inferGenderFromName(c.nome) === 'Female' ? (
-                            <span className="text-pink-600">
-                              <FemaleAvatarIcon />
-                            </span>
-                          ) : (
-                            <span className="text-blue-600">
-                              <MaleAvatarIcon />
-                            </span>
-                          )}
+                        <AvatarFallback className="text-xs font-semibold">
+                          {(c?.nome?.[0] ?? (c as any)?.email?.[0] ?? '?').toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0 flex items-center gap-2">
@@ -732,13 +472,28 @@ export function Colaboradores() {
                   <td className="py-3 pr-4">{(c as any).cargoNome ?? c.cargo?.nome_cargo ?? '—'}</td>
                   <td className="py-3 pr-4">{(c as any).email ?? '—'}</td>
                   <td className="py-3 pr-2 text-right">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setSelectedId(((c as any).id_colaborador ?? (c as any).id) as number)}
-                    >
-                      Ver perfil
-                    </Button>
+                    <div className="inline-flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedId(((c as any).id_colaborador ?? (c as any).id) as number)}
+                      >
+                        Ver perfil
+                      </Button>
+                      {(user?.role === Roles.Diretor || user?.role === Roles.Gestor) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const id = ((c as any).id_colaborador ?? (c as any).id) as number
+                            setEvaluationId(id)
+                            setEvalOpen(true)
+                          }}
+                        >
+                          Avaliar
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -748,21 +503,29 @@ export function Colaboradores() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map(c => (
-            <button
+            <div
               key={(c as any).id_colaborador ?? (c as any).id ?? (c as any).email ?? `${c.nome}-${c.sobrenome}`}
               className="group relative flex flex-col rounded-xl border bg-card p-4 text-left transition hover:bg-accent/50 cursor-pointer"
               onClick={() => setSelectedId(((c as any).id_colaborador ?? (c as any).id) as number)}
+              role="button"
+              tabIndex={0}
             >
               <ItemGroup>
                 <ItemHeader>
                   <ItemTitle>
-                    <ItemMedia variant="image">
-                      <img src={(() => {
+                    <ItemMedia>
+                      {(() => {
                         const a = ((c as any).foto_url ?? (c as any).avatar) as unknown
-                        if (!a) return ''
-                        const s = String(a)
-                        return s.startsWith('data:') ? s : `data:image/png;base64,${s}`
-                      })()} alt="" />
+                        const s = a ? String(a) : ''
+                        const src = s ? (s.startsWith('data:') ? s : `data:image/png;base64,${s}`) : ''
+                        const initial = (c?.nome?.[0] ?? (c as any)?.email?.[0] ?? '?').toUpperCase()
+                        return (
+                          <Avatar className="size-10">
+                            <AvatarImage src={src || undefined} alt="" />
+                            <AvatarFallback className="font-semibold">{initial}</AvatarFallback>
+                          </Avatar>
+                        )
+                      })()}
                     </ItemMedia>
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="truncate font-semibold">{c.nome} {c.sobrenome}</span>
@@ -771,6 +534,22 @@ export function Colaboradores() {
                       )}
                     </div>
                   </ItemTitle>
+                  {(user?.role === Roles.Diretor || user?.role === Roles.Gestor) && (
+                    <div className="ml-auto">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const id = ((c as any).id_colaborador ?? (c as any).id) as number
+                          setEvaluationId(id)
+                          setEvalOpen(true)
+                        }}
+                      >
+                        Avaliar
+                      </Button>
+                    </div>
+                  )}
                 </ItemHeader>
                 <Item className="mt-2" variant="outline" size="sm">
                   <ItemContent>
@@ -782,13 +561,23 @@ export function Colaboradores() {
                   <Item variant="outline" size="sm">
                     <ItemContent>
                       <div className="text-[11px] text-muted-foreground">Setor</div>
-                      <div className="text-sm font-medium truncate">{c.equipe?.setor?.nome_setor ?? '—'}</div>
+                      <div className="text-sm font-medium truncate">
+                        {(() => {
+                          const setorId = (c as any).idSetor ?? c.equipe?.setor?.id_setor ?? (c as any).id_setor
+                          return setores.find(s => s.id_setor === setorId)?.nome_setor ?? '—'
+                        })()}
+                      </div>
                     </ItemContent>
                   </Item>
                   <Item variant="outline" size="sm">
                     <ItemContent>
                       <div className="text-[11px] text-muted-foreground">Equipe</div>
-                      <div className="text-sm font-medium truncate">{c.equipe?.nome_equipe ?? '—'}</div>
+                      <div className="text-sm font-medium truncate">
+                        {(() => {
+                          const equipeId = (c as any).idEquipe ?? c.equipe?.id_equipe ?? (c as any).id_equipe
+                          return equipes.find(e => e.id_equipe === equipeId)?.nome_equipe ?? '—'
+                        })()}
+                      </div>
                     </ItemContent>
                   </Item>
                 </div>
@@ -799,32 +588,33 @@ export function Colaboradores() {
                   </ItemContent>
                 </Item>
               </ItemGroup>
-            </button>
+            </div>
           ))}
         </div>
       )}
 
       <CollaboratorProfileModal idColaborador={selectedId} onClose={() => setSelectedId(null)} />
 
-      <AvatarEditorModal
-        open={newAvatarOpen}
-        src={newAvatarSrc}
-        onPick={() => newAvatarInputRef.current?.click()}
-        onClose={() => { setNewAvatarOpen(false); setNewAvatarSrc(null) }}
-        onSave={(blob) => {
-          const reader = new FileReader()
-          reader.onload = async () => {
-            const base64 = String(reader.result)
-            setNewAvatarBase64(base64)
-            setNewAvatarOpen(false)
-            setNewAvatarSrc(null)
-          }
-          reader.readAsDataURL(blob)
-        }}
+      <NewCollaboratorModal
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        setores={setores}
+        equipes={equipes}
+        cargos={cargos}
+        onCreated={(created) => setItems((prev) => [...prev, created])}
       />
 
-      {null as any}
+      <EvaluateCollaboratorModal
+        open={evalOpen}
+        onOpenChange={setEvalOpen}
+        evaluationId={evaluationId}
+        setEvaluationId={(id) => setEvaluationId(id)}
+        items={items}
+        filteredIds={filtered.map(it => ((it as any).id_colaborador ?? (it as any).id) as number)}
+        competenciasByColab={competenciasByColab}
+        setores={setores}
+        equipes={equipes}
+      />
     </div>
   )
 }
-

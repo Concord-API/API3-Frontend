@@ -16,6 +16,7 @@ export interface Cargo {
     id_cargo: number;
     nome_cargo: string;
     desc_cargo?: string | null;
+    role?: UserRole;
     id_setor: number;
     setor?: Setor;
     status: boolean;
@@ -40,7 +41,7 @@ export interface Colaborador {
     email: string;
     senha: string;
     status: boolean;
-    role: UserRole;
+    role?: UserRole;
     avatar?: string | null;
     capa?: string | null;
     criado_em?: string | null;
