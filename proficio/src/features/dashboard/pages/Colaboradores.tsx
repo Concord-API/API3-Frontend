@@ -187,11 +187,12 @@ export function Colaboradores() {
     let base = items
 
     if (user?.role === Roles.Gestor) {
-      if (myTeamId != null) base = base.filter(c => (
-        (c as any).idEquipe ??
-        c.equipe?.id_equipe ??
-        (c as any).id_equipe
-      ) === myTeamId)
+      base = base.filter(c => {
+        const roleRaw = ((c as any).cargo?.role ?? (c as any).role ?? '') as string
+        const role = String(roleRaw).trim().toLowerCase()
+        const isSelf = String(((c as any).id_colaborador ?? (c as any).id)) === String(user?.id ?? '')
+        return isSelf || (role !== 'gestor' && role !== 'diretor')
+      })
     } else {
       if (selectedSetor !== 'all') base = base.filter(c => (
         (c as any).idSetor ??
