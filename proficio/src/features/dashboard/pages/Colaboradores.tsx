@@ -188,8 +188,10 @@ export function Colaboradores() {
 
     if (user?.role === Roles.Gestor) {
       base = base.filter(c => {
-        const role = (c as any).role ?? c.role
-        return role !== Roles.Diretor
+        const roleRaw = ((c as any).cargo?.role ?? (c as any).role ?? '') as string
+        const role = String(roleRaw).trim().toLowerCase()
+        const isSelf = String(((c as any).id_colaborador ?? (c as any).id)) === String(user?.id ?? '')
+        return isSelf || (role !== 'gestor' && role !== 'diretor')
       })
     } else {
       if (selectedSetor !== 'all') base = base.filter(c => (
