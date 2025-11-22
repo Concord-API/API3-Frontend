@@ -19,10 +19,11 @@ type Avaliacao = {
   created_at?: string | null
   updated_at?: string | null
   resumo?: string | null
+  competenciaNome?: string | null
 }
 
 export function Avaliacoes() {
-  const { user } = useAuth()
+  const { } = useAuth()
   const navigate = useNavigate()
 
   const [loading, setLoading] = useState(true)
@@ -37,7 +38,14 @@ export function Avaliacoes() {
   const [q, setQ] = useState('')
   const [evalOpen, setEvalOpen] = useState(false)
   const [evaluationId, setEvaluationId] = useState<number | null>(null)
-  // filtros
+  const [existingEvaluation, setExistingEvaluation] = useState<{
+    id: number
+    competenciaId: number
+    competenciaNome: string
+    resumo: string | null
+    publico: boolean
+    nota?: number
+  } | null>(null)
   const [selectedSetor, setSelectedSetor] = useState<number | 'all'>('all')
   const [selectedEquipe, setSelectedEquipe] = useState<number | 'all'>('all')
   const [selectedColaborador, setSelectedColaborador] = useState<number | 'all'>('all')
@@ -51,57 +59,63 @@ export function Avaliacoes() {
   const equipeRef = useRef<HTMLDivElement | null>(null)
   const colaboradorRef = useRef<HTMLDivElement | null>(null)
 
-  useEffect(() => {
+  const loadData = async () => {
     setLoading(true)
-    Promise.all([
-      // Tenta carregar avaliações do usuário logado
-      (async () => {
-        try {
-          const res = await api.get<any[]>('/avaliacoes/minhas')
-          const normalized: Avaliacao[] = (res.data || []).map((it: any) => ({
-            id: Number(it?.id ?? 0),
-            id_colaborador: Number(it?.id_colaborador ?? it?.colaboradorId ?? it?.colaborador?.id_colaborador ?? 0),
-            colaborador: it?.colaborador ?? undefined,
-            created_at: it?.created_at ?? it?.criado_em ?? null,
-            updated_at: it?.updated_at ?? it?.atualizado_em ?? null,
-            resumo: it?.resumo ?? null,
-          }))
-          setEvaluations(normalized)
-        } catch {
-          setEvaluations([])
-        }
-      })(),
-      api.get<Colaborador[]>('/colaboradores'),
-      api.get<any[]>('/setores'),
-      api.get<any[]>('/equipes?status=all'),
-      api.get<Competencia[]>('/competencias'),
-    ])
-      .then(([_, c, s, e, comps]) => {
-        setItems(c.data)
-        const mappedSetores: Setor[] = (s.data || []).map((vm: any) => ({
-          id_setor: vm.id ?? vm.id_setor,
-          nome_setor: vm.nome ?? vm.nome_setor,
-          desc_setor: vm.descricao ?? vm.desc_setor,
-          status: vm.status ?? true,
-          id_diretor: vm.diretorId ?? vm.id_diretor,
-        }))
-        setSetores(mappedSetores)
-        const mappedEquipes: Equipe[] = (e.data || []).map((vm: any) => ({
-          id_equipe: vm.id ?? vm.id_equipe,
-          nome_equipe: vm.nome ?? vm.nome_equipe,
-          id_setor: vm.setorId ?? vm.id_setor,
-          status: vm.status ?? true,
-          setor: vm.setor ?? undefined,
-        }))
-        setEquipes(mappedEquipes)
-        const mappedCompetencias: Competencia[] = (comps.data || []).map((vm: any) => ({
-          id_competencia: vm.id ?? vm.id_competencia ?? vm.idCompetencia ?? 0,
-          nome: vm.nome ?? vm.name ?? '',
-          tipo: Number(vm.tipo ?? 0) as 0 | 1,
-        }))
-        setCompetencias(mappedCompetencias)
-      })
-      .finally(() => setLoading(false))
+    try {
+      const [_, c, s, e, comps] = await Promise.all([
+        (async () => {
+          try {
+            const res = await api.get<any[]>('/avaliacoes/minhas')
+            const normalized: Avaliacao[] = (res.data || []).map((it: any) => ({
+              id: Number(it?.id ?? 0),
+              id_colaborador: Number(it?.avaliadoId ?? it?.id_colaborador ?? it?.colaboradorId ?? 0),
+              colaborador: it?.colaborador ?? undefined,
+              created_at: it?.created_at ?? it?.criadoEm ?? null,
+              updated_at: it?.updated_at ?? it?.atualizadoEm ?? null,
+              resumo: it?.resumo ?? null,
+              competenciaNome: it?.competenciaNome ?? null,
+            }))
+            setEvaluations(normalized)
+          } catch {
+            setEvaluations([])
+          }
+        })(),
+        api.get<Colaborador[]>('/colaboradores'),
+        api.get<any[]>('/setores'),
+        api.get<any[]>('/equipes?status=all'),
+        api.get<Competencia[]>('/competencias'),
+      ])
+
+      setItems(c.data)
+      const mappedSetores: Setor[] = (s.data || []).map((vm: any) => ({
+        id_setor: vm.id ?? vm.id_setor,
+        nome_setor: vm.nome ?? vm.nome_setor,
+        desc_setor: vm.descricao ?? vm.desc_setor,
+        status: vm.status ?? true,
+        id_diretor: vm.diretorId ?? vm.id_diretor,
+      }))
+      setSetores(mappedSetores)
+      const mappedEquipes: Equipe[] = (e.data || []).map((vm: any) => ({
+        id_equipe: vm.id ?? vm.id_equipe,
+        nome_equipe: vm.nome ?? vm.nome_equipe,
+        id_setor: vm.setorId ?? vm.id_setor,
+        status: vm.status ?? true,
+        setor: vm.setor ?? undefined,
+      }))
+      setEquipes(mappedEquipes)
+      const mappedCompetencias: Competencia[] = (comps.data || []).map((vm: any) => ({
+        id_competencia: vm.id ?? vm.id_competencia ?? vm.idCompetencia ?? 0,
+        nome: vm.nome ?? vm.name ?? '',
+        tipo: Number(vm.tipo ?? 0) as 0 | 1,
+      }))
+      setCompetencias(mappedCompetencias)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
   }, [])
 
   useEffect(() => {
@@ -183,7 +197,6 @@ export function Avaliacoes() {
     const t = q.trim().toLowerCase()
     let base = evaluations.slice()
 
-    // filtro por setor/equipe/colaborador
     if (selectedSetor !== 'all') {
       base = base.filter(ev => {
         const c = items.find(it => ((it as any).id_colaborador ?? (it as any).id) === ev.id_colaborador)
@@ -211,8 +224,27 @@ export function Avaliacoes() {
     })
   }, [q, evaluations, items, selectedSetor, selectedEquipe, selectedColaborador])
 
-  function openEvaluate(colabId: number) {
+  async function openEvaluate(colabId: number, evaluation?: Avaliacao) {
     setEvaluationId(colabId)
+    if (evaluation) {
+      try {
+        const res = await api.get(`/avaliacoes/${evaluation.id}`)
+        const data = res.data
+        setExistingEvaluation({
+          id: data.id,
+          competenciaId: data.competenciaId || 0,
+          competenciaNome: data.competenciaNome || '',
+          resumo: data.resumo || '',
+          publico: data.publico ?? true,
+          nota: data.nota ?? data.rating ?? undefined,
+        })
+      } catch (error) {
+        console.error('Erro ao buscar avaliação:', error)
+        setExistingEvaluation(null)
+      }
+    } else {
+      setExistingEvaluation(null)
+    }
     setEvalOpen(true)
   }
 
@@ -370,6 +402,7 @@ export function Avaliacoes() {
             <thead>
               <tr className="text-left text-xs text-muted-foreground">
                 <th className="py-2 pr-4">Colaborador</th>
+                <th className="py-2 pr-4">Competência</th>
                 <th className="py-2 pr-4">Criada em</th>
                 <th className="py-2 pr-4">Atualizada em</th>
                 <th className="py-2 pr-2 text-right">Ações</th>
@@ -400,12 +433,16 @@ export function Avaliacoes() {
                         </div>
                       </div>
                     </td>
+                    <td className="py-3 pr-4">
+                      <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+                        {ev.competenciaNome ?? '—'}
+                      </span>
+                    </td>
                     <td className="py-3 pr-4">{ev.created_at ? new Date(ev.created_at).toLocaleString() : '—'}</td>
                     <td className="py-3 pr-4">{ev.updated_at ? new Date(ev.updated_at).toLocaleString() : '—'}</td>
                     <td className="py-3 pr-2 text-right">
                       <div className="inline-flex items-center gap-2">
-                        <Button size="sm" variant="outline" onClick={() => openEvaluate(Number(id))}>Editar</Button>
-                        <Button size="sm" variant="outline" onClick={() => openEvaluate(Number(id))}>Refazer</Button>
+                        <Button size="sm" variant="outline" onClick={() => openEvaluate(Number(id), ev)}>Editar</Button>
                         <Button size="sm" onClick={() => openEvaluate(Number(id))}>Avaliar novamente</Button>
                       </div>
                     </td>
@@ -414,7 +451,7 @@ export function Avaliacoes() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-6 text-center text-sm text-muted-foreground">
+                  <td colSpan={5} className="py-6 text-center text-sm text-muted-foreground">
                     Nenhuma avaliação encontrada.
                   </td>
                 </tr>
@@ -434,6 +471,8 @@ export function Avaliacoes() {
         competenciasByColab={competenciasByColab}
         setores={setores}
         equipes={equipes}
+        onSave={loadData}
+        existingEvaluation={existingEvaluation}
       />
     </div>
   )

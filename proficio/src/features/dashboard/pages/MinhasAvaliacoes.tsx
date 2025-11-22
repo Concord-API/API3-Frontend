@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui
 type PublicEvaluation = {
   id: number
   resumo: string | null
+  competenciaNome?: string | null
   created_at?: string | null
 }
 
@@ -26,23 +27,22 @@ export function MinhasAvaliacoes() {
     if (!user?.id) return
     setLoading(true)
     Promise.all([
-      // avaliações públicas
       (async () => {
         try {
           const res = await api.get<any[]>('/avaliacoes/minhas')
           const mapped: PublicEvaluation[] = (res.data || [])
-            .filter((it: any) => it?.publico === true || it?.isPublic === true) // futura compat
+            .filter((it: any) => it?.publico === true)
             .map((it: any) => ({
               id: Number(it?.id ?? 0),
               resumo: it?.resumo ?? null,
-              created_at: it?.created_at ?? it?.criado_em ?? null,
+              competenciaNome: it?.competenciaNome ?? null,
+              created_at: it?.created_at ?? it?.criadoEm ?? null,
             }))
           setPublicEvals(mapped)
         } catch {
           setPublicEvals([])
         }
       })(),
-      // perfil com competências
       api.get<any>(`/colaboradores/${encodeURIComponent(user.id)}/perfil`),
     ])
       .then(([_, perfil]) => {
@@ -99,6 +99,7 @@ export function MinhasAvaliacoes() {
                   <thead>
                     <tr className="text-left text-xs text-muted-foreground">
                       <th className="py-2 pr-4">Data</th>
+                      <th className="py-2 pr-4">Competência</th>
                       <th className="py-2 pr-4">Resumo</th>
                     </tr>
                   </thead>
@@ -106,6 +107,11 @@ export function MinhasAvaliacoes() {
                     {filteredPublic.map(ev => (
                       <tr key={ev.id} className="border-t hover:bg-muted/60 transition-colors">
                         <td className="py-3 pr-4">{ev.created_at ? new Date(ev.created_at).toLocaleString() : '—'}</td>
+                        <td className="py-3 pr-4">
+                          <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+                            {ev.competenciaNome ?? '—'}
+                          </span>
+                        </td>
                         <td className="py-3 pr-4">{ev.resumo || 'Sem comentários'}</td>
                       </tr>
                     ))}
