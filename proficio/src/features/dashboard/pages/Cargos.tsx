@@ -3,6 +3,7 @@ import { Input } from '@/shared/components/ui/input'
 import { api } from '@/shared/lib/api'
 import type { Cargo, Setor } from '@/shared/types'
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import { useNavigate } from 'react-router-dom'
 import { ButtonGroup } from '@/shared/components/ui/button-group'
 import { Button } from '@/shared/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/shared/components/ui/dialog'
@@ -19,6 +20,7 @@ type ViewMode = 'table' | 'grid'
 
 export function Cargos() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [mode, setMode] = useState<ViewMode>('grid')
   const [q, setQ] = useState('')
   const [items, setItems] = useState<Cargo[]>([])
@@ -34,7 +36,7 @@ export function Cargos() {
   const [addOpen, setAddOpen] = useState(false)
   const [novoNome, setNovoNome] = useState('')
   const [novaDesc, setNovaDesc] = useState('')
-  const [novoRole, setNovoRole] = useState<UserRole>(Roles.Colaborador)
+  const [novoRole, setNovoRole] = useState<UserRole>(Roles.COLABORADOR)
   const [novoSetor, setNovoSetor] = useState<number | 'none'>('none')
   const [saving, setSaving] = useState(false)
 
@@ -43,7 +45,7 @@ export function Cargos() {
   const [editTarget, setEditTarget] = useState<Cargo | null>(null)
   const [editNome, setEditNome] = useState('')
   const [editDesc, setEditDesc] = useState('')
-  const [editRole, setEditRole] = useState<UserRole>(Roles.Colaborador)
+  const [editRole, setEditRole] = useState<UserRole>(Roles.COLABORADOR)
   const [editSetor, setEditSetor] = useState<number | 'none'>('none')
 
   useEffect(() => {
@@ -129,94 +131,94 @@ export function Cargos() {
           )}
         </div>
         <div className="ml-auto flex items-center gap-2">
-          {user?.role === Roles.Diretor && (
-          <Dialog open={addOpen} onOpenChange={setAddOpen}>
-            <DialogTrigger asChild>
-              <Button size="icon" className="fixed bottom-6 right-6 h-10 p-4 w-auto rounded-lg   shadow-lg">
-                <Plus className="size-5" />
-                <p>Novo cargo</p>
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Novo cargo</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-3 py-2">
-                <div className="grid gap-1">
-                  <Label htmlFor="nome-cargo">Nome</Label>
-                  <Input id="nome-cargo" value={novoNome} onChange={(e) => setNovoNome(e.target.value)} placeholder="Ex.: Desenvolvedor Backend" />
-                </div>
-                <div className="grid gap-1">
-                  <Label htmlFor="desc-cargo">Descrição</Label>
-                  <Input id="desc-cargo" value={novaDesc} onChange={(e) => setNovaDesc(e.target.value)} placeholder="Opcional" />
-                </div>
-                <div className="grid gap-1">
-                  <Label>Role</Label>
-                  <select
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                    value={novoRole}
-                    onChange={(e) => setNovoRole(e.target.value as UserRole)}
-                  >
-                    <option value={Roles.Colaborador}>Colaborador</option>
-                    <option value={Roles.Gestor}>Gestor</option>
-                    <option value={Roles.Diretor}>Diretor</option>
-                  </select>
-                </div>
-                <div className="grid gap-1">
-                  <Label>Setor</Label>
-                  <select
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                    value={novoSetor === 'none' ? '' : String(novoSetor)}
-                    onChange={(e) => setNovoSetor(e.target.value ? Number(e.target.value) : 'none')}
-                  >
-                    <option value="">Selecione um setor</option>
-                    {setores.map(s => (
-                      <option key={s.id_setor} value={s.id_setor}>{s.nome_setor}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  disabled={saving || novoNome.trim().length === 0 || novoSetor === 'none'}
-                  onClick={async () => {
-                    const nome = novoNome.trim()
-                    if (!nome || novoSetor === 'none') return
-                    setSaving(true)
-                    try {
-                      const payload: any = { nome, descricao: (novaDesc || null), role: novoRole, setorId: (novoSetor as number) }
-                      const { data } = await api.post<any>('/cargos', payload)
-                      const vm: any = data
-                      const created: Cargo = {
-                        id_cargo: vm.id_cargo ?? vm.id ?? 0,
-                        nome_cargo: vm.nome_cargo ?? vm.nome ?? nome,
-                        desc_cargo: vm.desc_cargo ?? vm.descricao ?? (novaDesc || null),
-                        status: vm.status ?? true,
-                        role: vm.role ?? novoRole,
-                        id_setor: vm.id_setor ?? (novoSetor as number),
-                        setor: vm.setor ?? undefined,
-                      }
-                      setItems(prev => [...prev, created])
-                      toast.success('Cargo criado')
-                      setAddOpen(false)
-                      setNovoNome('')
-                      setNovaDesc('')
-                      setNovoRole(Roles.Colaborador)
-                      setNovoSetor('none')
-                    } catch (err: any) {
-                      if (err?.response?.status === 409) {
-                        toast.error('Já existe um cargo ativo com esse nome')
-                      }
-                    } finally {
-                      setSaving(false)
-                    }
-                  }}
-                >
-                  {saving ? 'Salvando...' : 'Salvar'}
+          {user?.role === Roles.DIRETOR && (
+            <Dialog open={addOpen} onOpenChange={setAddOpen}>
+              <DialogTrigger asChild>
+                <Button size="icon" className="fixed bottom-6 right-6 h-10 p-4 w-auto rounded-lg   shadow-lg">
+                  <Plus className="size-5" />
+                  <p>Novo cargo</p>
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Novo cargo</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-3 py-2">
+                  <div className="grid gap-1">
+                    <Label htmlFor="nome-cargo">Nome</Label>
+                    <Input id="nome-cargo" value={novoNome} onChange={(e) => setNovoNome(e.target.value)} placeholder="Ex.: Desenvolvedor Backend" />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="desc-cargo">Descrição</Label>
+                    <Input id="desc-cargo" value={novaDesc} onChange={(e) => setNovaDesc(e.target.value)} placeholder="Opcional" />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label>Nível de Acesso</Label>
+                    <select
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      value={novoRole}
+                      onChange={(e) => setNovoRole(e.target.value as UserRole)}
+                    >
+                      <option value={Roles.COLABORADOR}>Colaborador</option>
+                      <option value={Roles.GESTOR}>Gestor</option>
+                      <option value={Roles.DIRETOR}>Diretor</option>
+                    </select>
+                  </div>
+                  <div className="grid gap-1">
+                    <Label>Setor</Label>
+                    <select
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      value={novoSetor === 'none' ? '' : String(novoSetor)}
+                      onChange={(e) => setNovoSetor(e.target.value ? Number(e.target.value) : 'none')}
+                    >
+                      <option value="">Selecione um setor</option>
+                      {setores.map(s => (
+                        <option key={s.id_setor} value={s.id_setor}>{s.nome_setor}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    disabled={saving || novoNome.trim().length === 0 || novoSetor === 'none'}
+                    onClick={async () => {
+                      const nome = novoNome.trim()
+                      if (!nome || novoSetor === 'none') return
+                      setSaving(true)
+                      try {
+                        const payload: any = { nome, descricao: (novaDesc || null), role: novoRole, setorId: (novoSetor as number) }
+                        const { data } = await api.post<any>('/cargos', payload)
+                        const vm: any = data
+                        const created: Cargo = {
+                          id_cargo: vm.id_cargo ?? vm.id ?? 0,
+                          nome_cargo: vm.nome_cargo ?? vm.nome ?? nome,
+                          desc_cargo: vm.desc_cargo ?? vm.descricao ?? (novaDesc || null),
+                          status: vm.status ?? true,
+                          role: vm.role ?? novoRole,
+                          id_setor: vm.id_setor ?? (novoSetor as number),
+                          setor: vm.setor ?? undefined,
+                        }
+                        setItems(prev => [...prev, created])
+                        toast.success('Cargo criado')
+                        setAddOpen(false)
+                        setNovoNome('')
+                        setNovaDesc('')
+                        setNovoRole(Roles.COLABORADOR)
+                        setNovoSetor('none')
+                      } catch (err: any) {
+                        if (err?.response?.status === 409) {
+                          toast.error('Já existe um cargo ativo com esse nome')
+                        }
+                      } finally {
+                        setSaving(false)
+                      }
+                    }}
+                  >
+                    {saving ? 'Salvando...' : 'Salvar'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           )}
           <ButtonGroup>
             <Button variant={mode === 'table' ? 'default' : 'outline'} size="icon" className="transition-none" onClick={() => setMode('table')}>
@@ -267,7 +269,7 @@ export function Cargos() {
             <thead>
               <tr className="text-left text-xs text-muted-foreground">
                 <th className="py-2 pr-4">Cargo</th>
-                <th className="py-2 pr-4">Role</th>
+                <th className="py-2 pr-4">Nível de Acesso</th>
                 <th className="py-2 pr-4">Setor</th>
                 <th className="py-2 pr-2 text-right">Ações</th>
               </tr>
@@ -283,7 +285,7 @@ export function Cargos() {
                   <td className="py-3 pr-4">{setores.find(s => s.id_setor === c.id_setor)?.nome_setor ?? '—'}</td>
                   <td className="py-3 pr-2 text-right">
                     <div className="inline-flex items-center gap-2">
-                      {user?.role === Roles.Diretor && (
+                      {user?.role === Roles.DIRETOR && (
                         <>
                           <Button
                             size="sm"
@@ -292,7 +294,7 @@ export function Cargos() {
                               setEditTarget(c)
                               setEditNome(c.nome_cargo)
                               setEditDesc(c.desc_cargo || '')
-                              setEditRole((c.role ?? Roles.Colaborador) as UserRole)
+                              setEditRole((c.role ?? Roles.COLABORADOR) as UserRole)
                               setEditSetor(c.id_setor ?? 'none')
                               setEditOpen(true)
                             }}
@@ -307,7 +309,7 @@ export function Cargos() {
                                 await api.delete(`/cargos/${encodeURIComponent(c.id_cargo)}`)
                                 setItems(prev => prev.map(it => it.id_cargo === c.id_cargo ? { ...it, status: false } : it))
                                 toast.success('Cargo desativado')
-                              } catch {}
+                              } catch { }
                             }}
                           >
                             Desativar
@@ -330,7 +332,7 @@ export function Cargos() {
                   <td className="py-3 pr-4">{setores.find(s => s.id_setor === c.id_setor)?.nome_setor ?? '—'}</td>
                   <td className="py-3 pr-2 text-right">
                     <div className="inline-flex items-center gap-2">
-                      {user?.role === Roles.Diretor && (
+                      {user?.role === Roles.DIRETOR && (
                         <>
                           <Button
                             size="sm"
@@ -339,7 +341,7 @@ export function Cargos() {
                               setEditTarget(c)
                               setEditNome(c.nome_cargo)
                               setEditDesc(c.desc_cargo || '')
-                              setEditRole((c.role ?? Roles.Colaborador) as UserRole)
+                              setEditRole((c.role ?? Roles.COLABORADOR) as UserRole)
                               setEditSetor(c.id_setor ?? 'none')
                               setEditOpen(true)
                             }}
@@ -352,7 +354,7 @@ export function Cargos() {
                             onClick={async () => {
                               // Reativação: POST com mesmo nome e dados
                               try {
-                                const payload: any = { nome: c.nome_cargo, descricao: c.desc_cargo || null, role: (c.role ?? Roles.Colaborador), setorId: c.id_setor }
+                                const payload: any = { nome: c.nome_cargo, descricao: c.desc_cargo || null, role: (c.role ?? Roles.COLABORADOR), setorId: c.id_setor }
                                 const { data } = await api.post('/cargos', payload)
                                 const vm: any = data
                                 const updatedId = vm.id_cargo ?? vm.id ?? c.id_cargo
@@ -366,7 +368,7 @@ export function Cargos() {
                                   setor: vm.setor ?? it.setor,
                                 } : it))
                                 toast.success('Cargo reativado')
-                              } catch {}
+                              } catch { }
                             }}
                           >
                             Reativar
@@ -386,14 +388,26 @@ export function Cargos() {
             <div className="mb-2 text-xs font-semibold text-muted-foreground">Ativos</div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {active.map(c => (
-                <div key={c.id_cargo} className="group relative flex flex-col rounded-lg border bg-card p-4 text-left transition hover:bg-accent/50">
+                <div
+                  key={c.id_cargo}
+                  className="group relative flex flex-col rounded-lg border bg-card p-4 text-left transition hover:bg-accent/50 cursor-pointer"
+                  onClick={() => navigate(`/dashboard/colaboradores?cargo=${encodeURIComponent(c.nome_cargo)}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      navigate(`/dashboard/colaboradores?cargo=${encodeURIComponent(c.nome_cargo)}`)
+                    }
+                  }}
+                >
                   <ItemGroup>
                     <ItemHeader>
                       <ItemTitle>
                         <span className="truncate">{c.nome_cargo}</span>
                       </ItemTitle>
                       <div className="flex items-center gap-1">
-                        {user?.role === ('Diretor' as any) && (
+                        {user?.role === Roles.DIRETOR && (
                           <button
                             type="button"
                             className="inline-flex items-center p-0.5 text-muted-foreground opacity-70 hover:opacity-100 hover:text-foreground"
@@ -401,7 +415,7 @@ export function Cargos() {
                               setEditTarget(c)
                               setEditNome(c.nome_cargo)
                               setEditDesc(c.desc_cargo || '')
-                              setEditRole((c.role ?? Roles.Colaborador) as UserRole)
+                              setEditRole((c.role ?? Roles.COLABORADOR) as UserRole)
                               setEditSetor(c.id_setor ?? 'none')
                               setEditOpen(true)
                             }}
@@ -419,7 +433,7 @@ export function Cargos() {
                     <div className="grid grid-cols-2 gap-2 mt-3">
                       <Item variant="outline" size="sm">
                         <ItemContent>
-                          <div className="text-[11px] text-muted-foreground">Role</div>
+                          <div className="text-[11px] text-muted-foreground">Nível de Acesso</div>
                           <div className="text-sm font-medium truncate">{c.role ?? '—'}</div>
                         </ItemContent>
                       </Item>
@@ -442,15 +456,27 @@ export function Cargos() {
             <div>
               <div className="mb-2 text-xs font-semibold text-muted-foreground">Inativos</div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {inactive.map(c => (
-                  <div key={c.id_cargo} className="group relative flex flex-col rounded-lg border bg-card p-4 text-left transition hover:bg-accent/50 opacity-75">
+              {inactive.map(c => (
+                  <div
+                    key={c.id_cargo}
+                    className="group relative flex flex-col rounded-lg border bg-card p-4 text-left transition hover:bg-accent/50 opacity-75 cursor-pointer"
+                    onClick={() => navigate(`/dashboard/colaboradores?cargo=${encodeURIComponent(c.nome_cargo)}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        navigate(`/dashboard/colaboradores?cargo=${encodeURIComponent(c.nome_cargo)}`)
+                      }
+                    }}
+                  >
                     <ItemGroup>
                       <ItemHeader>
                         <ItemTitle>
                           <span className="truncate">{c.nome_cargo}</span>
                         </ItemTitle>
                         <div className="flex items-center gap-1">
-                          {user?.role === ('Diretor' as any) && (
+                          {user?.role === Roles.DIRETOR && (
                             <button
                               type="button"
                               className="inline-flex items-center p-0.5 text-muted-foreground opacity-70 hover:opacity-100 hover:text-foreground"
@@ -458,7 +484,7 @@ export function Cargos() {
                                 setEditTarget(c)
                                 setEditNome(c.nome_cargo)
                                 setEditDesc(c.desc_cargo || '')
-                                setEditRole((c.role ?? Roles.Colaborador) as UserRole)
+                                setEditRole((c.role ?? Roles.COLABORADOR) as UserRole)
                                 setEditSetor(c.id_setor ?? 'none')
                                 setEditOpen(true)
                               }}
@@ -498,15 +524,15 @@ export function Cargos() {
               <Input id="edit-desc-cargo" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Opcional" />
             </div>
             <div className="grid gap-1">
-              <Label>Role</Label>
+              <Label>Nivel de Acesso</Label>
               <select
                 className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                 value={editRole}
                 onChange={(e) => setEditRole(e.target.value as UserRole)}
               >
-                <option value={Roles.Colaborador}>Colaborador</option>
-                <option value={Roles.Gestor}>Gestor</option>
-                <option value={Roles.Diretor}>Diretor</option>
+                <option value={Roles.COLABORADOR}>Colaborador</option>
+                <option value={Roles.GESTOR}>Gestor</option>
+                <option value={Roles.DIRETOR}>Diretor</option>
               </select>
             </div>
             <div className="grid gap-1">
@@ -610,5 +636,6 @@ export function Cargos() {
     </div>
   )
 }
+
 
 

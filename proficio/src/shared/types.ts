@@ -31,6 +31,15 @@ export interface Equipe {
     status: boolean;
 }
 
+export interface Squad {
+    id: number;
+    nome: string;
+    descricao?: string | null;
+    status: boolean;
+    membrosCount?: number;
+    liderId?: number | null;
+}
+
 export interface Colaborador {
     id_colaborador: number;
     cpf?: string | null;
@@ -57,6 +66,7 @@ export interface Competencia {
     id_competencia: number;
     nome: string;
     tipo: CompetenciaTipo;
+    aprovada?: boolean;
 }
 
 export interface ColaboradorCompetencia {

@@ -104,42 +104,24 @@ export function DashboardLayout() {
         </SidebarHeader>
         <SidebarContent>
           {(() => {
-            const role = user?.role ?? Roles.Colaborador
+            const role = user?.role ?? Roles.COLABORADOR
             const routes = getRoutesForRole(role)
             const general = routes.filter(r => (r.section ?? 'general') === 'general')
             const org = routes.filter(r => r.section === 'org')
-            return (
-              <>
-                <SidebarGroup>
-                  <SidebarGroupLabel>Geral</SidebarGroupLabel>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {general.map((r) => {
-                        const Icon = r.icon ?? Home
-                        return (
-                          <SidebarMenuItem key={r.path || 'root'}>
-                            <SidebarMenuButton
-                              asChild
-                              isActive={isRouteActive(`/dashboard/${r.path}`, r.path === '')}
-                              tooltip={r.label}
-                            >
-                              <NavLink to={`/dashboard/${r.path}`.replace(/\/$/, '')} end={r.path === ''}>
-                                <Icon />
-                                <span>{r.label}</span>
-                              </NavLink>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                        )
-                      })}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-                {org.length > 0 && (
-                  <SidebarGroup>
-                    <SidebarGroupLabel>Organizações</SidebarGroupLabel>
-                    <SidebarGroupContent>
-                      <SidebarMenu>
-                        {org.map((r) => {
+
+            function renderGrouped(list: typeof routes, groups: { label: string, keys: string[] }[]) {
+              return (
+                <SidebarMenu>
+                  {groups.map(group => {
+                    const items = list.filter(r => group.keys.includes(r.path))
+                    if (items.length === 0) return null
+                    return (
+                      <div key={group.label} className="mb-2">
+                        <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground
+                        group-data-[collapsible=icon]:hidden group-data-[collapsible=icon]:m-0 group-data-[collapsible=icon]:p-0">
+                          {group.label}
+                        </div>
+                        {items.map((r) => {
                           const Icon = r.icon ?? Home
                           return (
                             <SidebarMenuItem key={r.path || 'root'}>
@@ -156,7 +138,35 @@ export function DashboardLayout() {
                             </SidebarMenuItem>
                           )
                         })}
-                      </SidebarMenu>
+                      </div>
+                    )
+                  })}
+                </SidebarMenu>
+              )
+            }
+
+            const generalGroups = [
+              { label: 'Início', keys: [''] },
+              { label: 'Meu perfil', keys: ['perfil', 'competencias', 'minhas-avaliacoes'] },
+            ]
+            const orgGroups = [
+              { label: 'Estrutura', keys: ['cargos', 'squads', 'setores', 'equipes'] },
+              { label: 'Pessoas', keys: ['colaboradores'] },
+              { label: 'Avaliações', keys: ['avaliacoes', 'aprovacao-competencias'] },
+            ]
+            return (
+              <>
+                <SidebarGroup>
+                  <SidebarGroupLabel>Geral</SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    {renderGrouped(general, generalGroups)}
+                  </SidebarGroupContent>
+                </SidebarGroup>
+                {org.length > 0 && (
+                  <SidebarGroup>
+                    <SidebarGroupLabel>Organizações</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                      {renderGrouped(org, orgGroups)}
                     </SidebarGroupContent>
                   </SidebarGroup>
                 )}
@@ -215,7 +225,7 @@ export function DashboardLayout() {
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 {(() => {
-                  const role = user?.role ?? Roles.Colaborador
+                  const role = user?.role ?? Roles.COLABORADOR
                   const currentPath = location.pathname.replace(/^\/dashboard\/?/, '')
                   const currentKey = currentPath.split('/')[0] ?? ''
                   const current = getRoutesForRole(role).find(r => r.path === currentKey)

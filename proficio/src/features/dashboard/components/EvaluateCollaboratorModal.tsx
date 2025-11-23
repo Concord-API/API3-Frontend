@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Dialog as Modal, DialogContent as ModalContent, DialogHeader as ModalHeader, DialogTitle as ModalTitle, DialogFooter as ModalFooter } from '@/shared/components/ui/dialog'
+import { Dialog as Modal, DialogContent as ModalContent, DialogHeader as ModalHeader, DialogTitle as ModalTitle, DialogFooter as ModalFooter, DialogDescription as ModalDescription } from '@/shared/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs'
 import { ScrollArea } from '@/shared/components/ui/scroll-area'
 import { Button } from '@/shared/components/ui/button'
 import { Avatar as UiAvatar, AvatarFallback as UiAvatarFallback, AvatarImage as UiAvatarImage } from '@/shared/components/ui/avatar'
 import { toast } from 'sonner'
 import type { Colaborador, ColaboradorCompetencia, Equipe, Setor } from '@/shared/types'
+import { useAuth } from '@/features/auth/hooks/useAuth'
+import { api } from '@/shared/lib/api'
 
 type Props = {
   open: boolean
@@ -17,6 +19,15 @@ type Props = {
   competenciasByColab: Record<number, ColaboradorCompetencia[]>
   setores: Setor[]
   equipes: Equipe[]
+  onSave?: () => void
+  existingEvaluation?: {
+    id: number
+    competenciaId: number
+    competenciaNome: string
+    resumo: string | null
+    publico: boolean
+    nota?: number
+  } | null
 }
 
 export function EvaluateCollaboratorModal({
@@ -29,10 +40,15 @@ export function EvaluateCollaboratorModal({
   competenciasByColab,
   setores,
   equipes,
+  onSave,
+  existingEvaluation,
 }: Props) {
+  const { user } = useAuth()
   const [comments, setComments] = useState<string>('')
+  const [isPublic, setIsPublic] = useState<boolean>(true)
   const [selectedCompetencia, setSelectedCompetencia] = useState<number | ''>('')
   const [competenceEvaluations, setCompetenceEvaluations] = useState<Record<number, { rating: number | ''; review: string }>>({})
+  const [isSaving, setIsSaving] = useState(false)
 
   const current = useMemo(
     () => items.find(it => ((it as any).id_colaborador ?? (it as any).id) === evaluationId),
@@ -40,11 +56,23 @@ export function EvaluateCollaboratorModal({
   )
 
   useEffect(() => {
-    // Resetar campos ao mudar colaborador avaliado ou ao reabrir o modal
-    setComments('')
-    setSelectedCompetencia('')
-    setCompetenceEvaluations({})
-  }, [evaluationId, open])
+    if (existingEvaluation && open) {
+      setComments(existingEvaluation.resumo || '')
+      setIsPublic(existingEvaluation.publico)
+      setSelectedCompetencia(existingEvaluation.competenciaId)
+      setCompetenceEvaluations({
+        [existingEvaluation.competenciaId]: {
+          rating: existingEvaluation.nota ?? '',
+          review: existingEvaluation.resumo || ''
+        }
+      })
+    } else {
+      setComments('')
+      setIsPublic(true)
+      setSelectedCompetencia('')
+      setCompetenceEvaluations({})
+    }
+  }, [evaluationId, open, existingEvaluation])
 
   return (
     <Modal open={open} onOpenChange={onOpenChange}>
@@ -89,6 +117,9 @@ export function EvaluateCollaboratorModal({
               )
             })()}
           </ModalTitle>
+          <ModalDescription className="sr-only">
+            Avalie as competências e deixe um resumo sobre o desempenho do colaborador.
+          </ModalDescription>
         </ModalHeader>
         <ScrollArea className="max-h-[65vh] min-h-[380px]">
           <div className="px-6 pb-2">
@@ -108,6 +139,16 @@ export function EvaluateCollaboratorModal({
                       onChange={(e) => setComments(e.target.value)}
                       placeholder="Ex.: Resultados, comportamentos observados, metas batidas..."
                     />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="flag-publica"
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      checked={isPublic}
+                      onChange={(e) => setIsPublic(e.target.checked)}
+                    />
+                    <label htmlFor="flag-publica" className="text-sm">Tornar avaliação pública ao avaliado</label>
                   </div>
                 </div>
               </TabsContent>
@@ -158,7 +199,7 @@ export function EvaluateCollaboratorModal({
                                 }}
                               >
                                 <option value="">—</option>
-                                {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+                                {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
                               </select>
                             </div>
                             <div className="grid gap-1">
@@ -216,7 +257,68 @@ export function EvaluateCollaboratorModal({
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
-              <Button onClick={() => { toast.success('Avaliação salva (local)'); onOpenChange(false) }}>Salvar</Button>
+              <Button
+                onClick={async () => {
+                  if (!user?.id || !evaluationId) {
+                    toast.error('Dados do usuário ou colaborador inválidos')
+                    return
+                  }
+
+                  setIsSaving(true)
+                  try {
+                    const competenciasAvaliadas = Object.entries(competenceEvaluations)
+                      .filter(([_, v]) => v.rating !== '' || (v.review && v.review.trim()))
+
+                    if (competenciasAvaliadas.length === 0) {
+                      toast.error('Avalie pelo menos uma competência')
+                      setIsSaving(false)
+                      return
+                    }
+
+                    const promises = competenciasAvaliadas.map(async ([competenciaIdStr, val]) => {
+                      const compId = Number(competenciaIdStr)
+                      const isUpdate = existingEvaluation && existingEvaluation.competenciaId === compId
+
+                      if (isUpdate) {
+                        const payload = {
+                          resumo: val.review?.trim() || null,
+                          competenciaId: compId,
+                          status: true,
+                          publico: isPublic === true,
+                          nota: val.rating === '' ? undefined : Number(val.rating),
+                        }
+                        return api.put(`/avaliacoes/${existingEvaluation.id}`, payload)
+                      } else {
+                        const payload = {
+                          avaliadorId: user.id,
+                          avaliadoId: evaluationId,
+                          resumo: val.review?.trim() || null,
+                          competenciaId: compId,
+                          status: true,
+                          publico: isPublic === true,
+                          nota: val.rating === '' ? undefined : Number(val.rating),
+                        }
+                        return api.post('/avaliacoes', payload)
+                      }
+                    })
+
+                    await Promise.all(promises)
+
+                    toast.success(`${competenciasAvaliadas.length} avaliação(ões) enviada(s) com sucesso!`)
+                    onSave?.()
+                    onOpenChange(false)
+                  } catch (error: any) {
+                    console.error('Erro ao salvar avaliação:', error)
+                    const mensagem = error?.response?.data?.message || error?.message || 'Erro ao salvar avaliação'
+                    toast.error(mensagem)
+                  } finally {
+                    setIsSaving(false)
+                  }
+                }}
+                disabled={isSaving}
+              >
+                {isSaving ? 'Salvando...' : 'Salvar'}
+              </Button>
             </div>
           </div>
         </ModalFooter>
