@@ -17,6 +17,7 @@ import { Plus } from 'lucide-react'
 import { Item, ItemContent, ItemGroup, ItemHeader, ItemTitle } from '@/shared/components/ui/item'
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar'
 import { Skeleton } from '@/shared/components/ui/skeleton'
+import { Roles } from '@/shared/constants/roles'
 
 export function Equipes() {
   const { user } = useAuth()
@@ -107,7 +108,7 @@ export function Equipes() {
     const map: Record<number, Colaborador | undefined> = {}
     for (const c of colaboradores) {
       const r = String(((c as any).cargo?.role ?? (c as any).role) ?? '')
-      if (r === 'Gestor') {
+      if (r === Roles.GESTOR) {
         const teamId = (c as any).id_equipe ?? c.equipe?.id_equipe
         if (teamId != null && map[teamId] == null) map[teamId] = c
       }
@@ -131,7 +132,7 @@ export function Equipes() {
     api.get(`/colaboradores/${encodeURIComponent(user.id)}/perfil`).then((res) => {
       setMyTeamId(res.data?.equipe?.id_equipe ?? null)
       setMySetorId(res.data?.equipe?.setor?.id_setor ?? null)
-      if ((user?.role as any) === 'Gestor') {
+      if (user?.role === Roles.GESTOR) {
         const sid = res.data?.equipe?.setor?.id_setor
         if (sid != null) setNovoSetor(sid)
       }
@@ -141,7 +142,7 @@ export function Equipes() {
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase()
     let base = items
-    if (user?.role === 'Gestor' as any) {
+    if (user?.role === Roles.GESTOR) {
       if (mySetorId != null) base = base.filter(e => e.id_setor === mySetorId)
       if (myTeamId != null) base = base.filter(e => e.id_equipe === myTeamId)
     } else {
@@ -278,7 +279,7 @@ export function Equipes() {
                         onChange={(e) => setNovoGestor(e.target.value ? Number(e.target.value) : 'none')}
                       >
                         <option value="">Sem gestor</option>
-                        {colaboradores.filter(c => String(((c as any).cargo?.role ?? (c as any).role) ?? '') === 'Gestor').map((c, idx) => {
+                        {colaboradores.filter(c => String(((c as any).cargo?.role ?? (c as any).role) ?? '') === Roles.GESTOR).map((c, idx) => {
                           const cid = (c as any).id ?? (c as any).id_colaborador ?? idx
                           return (
                             <option key={cid} value={cid}>{`${c.nome} ${c.sobrenome}`.trim()}</option>
@@ -321,12 +322,12 @@ export function Equipes() {
               </DialogContent>
             </Dialog>
             <ButtonGroup>
-            <Button variant={mode === 'table' ? 'default' : 'outline'} size="icon" className="transition-none" onClick={() => setMode('table')}>
-              <List size={20} strokeWidth={2} absoluteStrokeWidth shapeRendering="geometricPrecision" />
-            </Button>
-            <Button variant={mode === 'grid' ? 'default' : 'outline'} size="icon" className="transition-none" onClick={() => setMode('grid')}>
-              <LayoutGrid size={20} strokeWidth={2} absoluteStrokeWidth shapeRendering="geometricPrecision" />
-            </Button>
+              <Button variant={mode === 'table' ? 'default' : 'outline'} size="icon" className="transition-none" onClick={() => setMode('table')}>
+                <List size={20} strokeWidth={2} absoluteStrokeWidth shapeRendering="geometricPrecision" />
+              </Button>
+              <Button variant={mode === 'grid' ? 'default' : 'outline'} size="icon" className="transition-none" onClick={() => setMode('grid')}>
+                <LayoutGrid size={20} strokeWidth={2} absoluteStrokeWidth shapeRendering="geometricPrecision" />
+              </Button>
             </ButtonGroup>
           </div>
         </div>
@@ -339,8 +340,8 @@ export function Equipes() {
               <tr className="text-left text-xs text-muted-foreground">
                 <th className="py-2 pr-4">Equipe</th>
                 <th className="py-2 pr-4">Setor</th>
-                {user?.role === 'Diretor' && <th className="py-2 pr-4">Responsável</th>}
-                {user?.role === 'Gestor' && <th className="py-2 pr-4">Minha equipe</th>}
+                {user?.role === Roles.DIRETOR && <th className="py-2 pr-4">Responsável</th>}
+                {user?.role === Roles.GESTOR && <th className="py-2 pr-4">Minha equipe</th>}
               </tr>
             </thead>
             <tbody>
@@ -351,20 +352,20 @@ export function Equipes() {
                 const setorName = eq.setor?.nome_setor ?? setores.find(s => s.id_setor === (eq.setor?.id_setor ?? (eq as any).id_setor ?? eq.id_setor))?.nome_setor ?? '—'
                 const setorId = eq.setor?.id_setor ?? (eq as any).id_setor ?? eq.id_setor
                 return (
-                <tr key={eq.id_equipe} className="border-t hover:bg-accent/40 cursor-pointer" onClick={() => navigate(`/dashboard/colaboradores?setor=${setorId}&equipe=${eq.id_equipe}`)}>
-                  <td className="py-3 pr-4 font-medium">{eq.nome_equipe}</td>
-                  <td className="py-3 pr-4">{setorName}</td>
-                  {user?.role === 'Diretor' && (
-                    <td className="py-3 pr-4">{(() => { const g = gestoresByEquipe[eq.id_equipe]; return g ? `${g.nome} ${g.sobrenome}`.trim() : '—' })()}</td>
-                  )}
-                  {user?.role === 'Gestor' && (
-                    <td className="py-3 pr-4">
-                      {eq.id_equipe === myTeamId ? (
-                        <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px]">Sua equipe</span>
-                      ) : null}
-                    </td>
-                  )}
-                </tr>)
+                  <tr key={eq.id_equipe} className="border-t hover:bg-accent/40 cursor-pointer" onClick={() => navigate(`/dashboard/colaboradores?setor=${setorId}&equipe=${eq.id_equipe}`)}>
+                    <td className="py-3 pr-4 font-medium">{eq.nome_equipe}</td>
+                    <td className="py-3 pr-4">{setorName}</td>
+                    {user?.role === Roles.DIRETOR && (
+                      <td className="py-3 pr-4">{(() => { const g = gestoresByEquipe[eq.id_equipe]; return g ? `${g.nome} ${g.sobrenome}`.trim() : '—' })()}</td>
+                    )}
+                    {user?.role === Roles.GESTOR && (
+                      <td className="py-3 pr-4">
+                        {eq.id_equipe === myTeamId ? (
+                          <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px]">Sua equipe</span>
+                        ) : null}
+                      </td>
+                    )}
+                  </tr>)
               })}
               {filteredInactive.length > 0 && (
                 <tr>
@@ -375,14 +376,14 @@ export function Equipes() {
                 const setorName = eq.setor?.nome_setor ?? setores.find(s => s.id_setor === (eq.setor?.id_setor ?? (eq as any).id_setor ?? eq.id_setor))?.nome_setor ?? '—'
                 const setorId = eq.setor?.id_setor ?? (eq as any).id_setor ?? eq.id_setor
                 return (
-                <tr key={eq.id_equipe} className="border-t opacity-70 hover:bg-accent/40 cursor-pointer" onClick={() => navigate(`/dashboard/colaboradores?setor=${setorId}&equipe=${eq.id_equipe}`)}>
-                  <td className="py-3 pr-4 font-medium">{eq.nome_equipe}</td>
-                  <td className="py-3 pr-4">{setorName}</td>
-                  {user?.role === 'Diretor' && (
-                    <td className="py-3 pr-4">{(() => { const g = gestoresByEquipe[eq.id_equipe]; return g ? `${g.nome} ${g.sobrenome}`.trim() : '—' })()}</td>
-                  )}
-                  {user?.role === 'Gestor' && <td className="py-3 pr-4" />}
-                </tr>)
+                  <tr key={eq.id_equipe} className="border-t opacity-70 hover:bg-accent/40 cursor-pointer" onClick={() => navigate(`/dashboard/colaboradores?setor=${setorId}&equipe=${eq.id_equipe}`)}>
+                    <td className="py-3 pr-4 font-medium">{eq.nome_equipe}</td>
+                    <td className="py-3 pr-4">{setorName}</td>
+                    {user?.role === Roles.DIRETOR && (
+                      <td className="py-3 pr-4">{(() => { const g = gestoresByEquipe[eq.id_equipe]; return g ? `${g.nome} ${g.sobrenome}`.trim() : '—' })()}</td>
+                    )}
+                    {user?.role === Roles.GESTOR && <td className="py-3 pr-4" />}
+                  </tr>)
               })}
             </tbody>
           </table>
@@ -392,186 +393,186 @@ export function Equipes() {
           <div>
             <div className="mb-2 text-xs font-semibold text-muted-foreground">Ativas</div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredActive.map(eq => {
-            const setorName = eq.setor?.nome_setor ?? setores.find(s => s.id_setor === (eq.setor?.id_setor ?? (eq as any).id_setor ?? eq.id_setor))?.nome_setor ?? '—'
-            return (
-              <div
-                key={eq.id_equipe}
-                className="group relative flex flex-col rounded-lg border bg-card p-4 text-left transition hover:bg-accent/50 cursor-pointer"
-                onClick={() => {
-                  const qs = new URLSearchParams()
-                  qs.set('equipe', String(eq.id_equipe))
-                  qs.set('setor', String(eq.setor?.id_setor ?? eq.id_setor))
-                  navigate(`/dashboard/colaboradores?${qs.toString()}`)
-                }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    const qs = new URLSearchParams()
-                    qs.set('equipe', String(eq.id_equipe))
-                    qs.set('setor', String(eq.setor?.id_setor ?? eq.id_setor))
-                    navigate(`/dashboard/colaboradores?${qs.toString()}`)
-                  }
-                }}
-              >
-                <ItemGroup>
-                  <ItemHeader>
-                    <ItemTitle>
-                      <span className="truncate">{eq.nome_equipe}</span>
-                    </ItemTitle>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        className="inline-flex items-center p-0.5 text-muted-foreground opacity-70 hover:opacity-100 hover:text-foreground"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setEditEquipe(eq)
-                          setEditNome(eq.nome_equipe)
-                          const gestor = gestoresByEquipe[eq.id_equipe]
-                          setEditGestor(gestor ? ((gestor as any).id ?? gestor.id_colaborador) : 'none')
-                          setEditOpen(true)
-                        }}
-                        aria-label="Editar equipe"
-                      >
-                        <SquarePen className="size-3.5" />
-                      </button>
-                      <ChevronRight className="size-4 opacity-60 group-hover:translate-x-0.5 transition-transform" />
-                    </div>
-                  </ItemHeader>
-                  {user?.role === 'Gestor' && eq.id_equipe === myTeamId && (
-                    <div className="absolute top-3 right-16 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] bg-card/90 backdrop-blur-sm">Sua equipe</div>
-                  )}
-                  <Item className="mt-2" variant="muted" size="sm">
-                    <ItemContent>
-                      <div className="text-[11px] text-muted-foreground">Gestor</div>
-                      <div className="flex items-center gap-2 text-sm font-medium truncate">
-                        <Avatar className="size-6">
-                          <AvatarImage src={(() => {
-                            const a = (gestoresByEquipe[eq.id_equipe] as any)?.avatar as unknown
-                            if (!a) return undefined as unknown as string
-                            const s = String(a)
-                            return s.startsWith('data:') ? s : `data:image/png;base64,${s}`
-                          })()} alt="" />
-                          <AvatarFallback>G</AvatarFallback>
-                        </Avatar>
-                        <span className="truncate">{(() => { const g = gestoresByEquipe[eq.id_equipe]; return g ? `${g.nome} ${g.sobrenome}`.trim() : '—' })()}</span>
+              {filteredActive.map(eq => {
+                const setorName = eq.setor?.nome_setor ?? setores.find(s => s.id_setor === (eq.setor?.id_setor ?? (eq as any).id_setor ?? eq.id_setor))?.nome_setor ?? '—'
+                return (
+                  <div
+                    key={eq.id_equipe}
+                    className="group relative flex flex-col rounded-lg border bg-card p-4 text-left transition hover:bg-accent/50 cursor-pointer"
+                    onClick={() => {
+                      const qs = new URLSearchParams()
+                      qs.set('equipe', String(eq.id_equipe))
+                      qs.set('setor', String(eq.setor?.id_setor ?? eq.id_setor))
+                      navigate(`/dashboard/colaboradores?${qs.toString()}`)
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        const qs = new URLSearchParams()
+                        qs.set('equipe', String(eq.id_equipe))
+                        qs.set('setor', String(eq.setor?.id_setor ?? eq.id_setor))
+                        navigate(`/dashboard/colaboradores?${qs.toString()}`)
+                      }
+                    }}
+                  >
+                    <ItemGroup>
+                      <ItemHeader>
+                        <ItemTitle>
+                          <span className="truncate">{eq.nome_equipe}</span>
+                        </ItemTitle>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            className="inline-flex items-center p-0.5 text-muted-foreground opacity-70 hover:opacity-100 hover:text-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditEquipe(eq)
+                              setEditNome(eq.nome_equipe)
+                              const gestor = gestoresByEquipe[eq.id_equipe]
+                              setEditGestor(gestor ? ((gestor as any).id ?? gestor.id_colaborador) : 'none')
+                              setEditOpen(true)
+                            }}
+                            aria-label="Editar equipe"
+                          >
+                            <SquarePen className="size-3.5" />
+                          </button>
+                          <ChevronRight className="size-4 opacity-60 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      </ItemHeader>
+                      {user?.role === Roles.GESTOR && eq.id_equipe === myTeamId && (
+                        <div className="absolute top-3 right-16 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] bg-card/90 backdrop-blur-sm">Sua equipe</div>
+                      )}
+                      <Item className="mt-2" variant="muted" size="sm">
+                        <ItemContent>
+                          <div className="text-[11px] text-muted-foreground">Gestor</div>
+                          <div className="flex items-center gap-2 text-sm font-medium truncate">
+                            <Avatar className="size-6">
+                              <AvatarImage src={(() => {
+                                const a = (gestoresByEquipe[eq.id_equipe] as any)?.avatar as unknown
+                                if (!a) return undefined as unknown as string
+                                const s = String(a)
+                                return s.startsWith('data:') ? s : `data:image/png;base64,${s}`
+                              })()} alt="" />
+                              <AvatarFallback>G</AvatarFallback>
+                            </Avatar>
+                            <span className="truncate">{(() => { const g = gestoresByEquipe[eq.id_equipe]; return g ? `${g.nome} ${g.sobrenome}`.trim() : '—' })()}</span>
+                          </div>
+                        </ItemContent>
+                      </Item>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <Item variant="outline" size="sm">
+                          <ItemContent>
+                            <div className="text-[11px] text-muted-foreground">Setor</div>
+                            <div className="text-sm font-medium truncate">{setorName}</div>
+                          </ItemContent>
+                        </Item>
+                        <Item variant="outline" size="sm">
+                          <ItemContent>
+                            <div className="text-[11px] text-muted-foreground">Colaboradores</div>
+                            <div className="text-lg font-semibold">{(eq as any).colaboradoresCount ?? colaboradores.filter(c => (c.id_equipe ?? (c as any).equipe?.id_equipe) === eq.id_equipe).length}</div>
+                          </ItemContent>
+                        </Item>
                       </div>
-                    </ItemContent>
-                  </Item>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    <Item variant="outline" size="sm">
-                      <ItemContent>
-                        <div className="text-[11px] text-muted-foreground">Setor</div>
-                        <div className="text-sm font-medium truncate">{setorName}</div>
-                      </ItemContent>
-                    </Item>
-                    <Item variant="outline" size="sm">
-                      <ItemContent>
-                        <div className="text-[11px] text-muted-foreground">Colaboradores</div>
-                        <div className="text-lg font-semibold">{(eq as any).colaboradoresCount ?? colaboradores.filter(c => (c.id_equipe ?? (c as any).equipe?.id_equipe) === eq.id_equipe).length}</div>
-                      </ItemContent>
-                    </Item>
+                    </ItemGroup>
                   </div>
-                </ItemGroup>
-              </div>
-            )
-          })}
-          {filteredActive.length === 0 && (
-            <Card className="px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma equipe ativa encontrada.</Card>
-          )}
+                )
+              })}
+              {filteredActive.length === 0 && (
+                <Card className="px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma equipe ativa encontrada.</Card>
+              )}
             </div>
           </div>
           {filteredInactive.length > 0 && (
-          <div>
-            <div className="mb-2 text-xs font-semibold text-muted-foreground">Inativas</div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredInactive.map(eq => {
-            const setorName = eq.setor?.nome_setor ?? setores.find(s => s.id_setor === (eq.setor?.id_setor ?? (eq as any).id_setor ?? eq.id_setor))?.nome_setor ?? '—'
-            return (
-              <div
-                key={eq.id_equipe}
-                className="group relative flex flex-col rounded-lg border bg-card p-4 text-left transition hover:bg-accent/50 cursor-pointer opacity-75"
-                onClick={() => {
-                  const qs = new URLSearchParams()
-                  qs.set('equipe', String(eq.id_equipe))
-                  qs.set('setor', String(eq.setor?.id_setor ?? eq.id_setor))
-                  navigate(`/dashboard/colaboradores?${qs.toString()}`)
-                }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    const qs = new URLSearchParams()
-                    qs.set('equipe', String(eq.id_equipe))
-                    qs.set('setor', String(eq.setor?.id_setor ?? eq.id_setor))
-                    navigate(`/dashboard/colaboradores?${qs.toString()}`)
-                  }
-                }}
-              >
-                <ItemGroup>
-                  <ItemHeader>
-                    <ItemTitle>
-                      <span className="truncate">{eq.nome_equipe}</span>
-                    </ItemTitle>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        className="inline-flex items-center p-0.5 text-muted-foreground opacity-70 hover:opacity-100 hover:text-foreground"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setEditEquipe(eq)
-                          setEditNome(eq.nome_equipe)
-                          const gestor = gestoresByEquipe[eq.id_equipe]
-                          setEditGestor(gestor ? ((gestor as any).id ?? gestor.id_colaborador) : 'none')
-                          setEditOpen(true)
-                        }}
-                        aria-label="Editar equipe"
-                      >
-                        <SquarePen className="size-3.5" />
-                      </button>
-                      <ChevronRight className="size-4 opacity-60 group-hover:translate-x-0.5 transition-transform" />
+            <div>
+              <div className="mb-2 text-xs font-semibold text-muted-foreground">Inativas</div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filteredInactive.map(eq => {
+                  const setorName = eq.setor?.nome_setor ?? setores.find(s => s.id_setor === (eq.setor?.id_setor ?? (eq as any).id_setor ?? eq.id_setor))?.nome_setor ?? '—'
+                  return (
+                    <div
+                      key={eq.id_equipe}
+                      className="group relative flex flex-col rounded-lg border bg-card p-4 text-left transition hover:bg-accent/50 cursor-pointer opacity-75"
+                      onClick={() => {
+                        const qs = new URLSearchParams()
+                        qs.set('equipe', String(eq.id_equipe))
+                        qs.set('setor', String(eq.setor?.id_setor ?? eq.id_setor))
+                        navigate(`/dashboard/colaboradores?${qs.toString()}`)
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          const qs = new URLSearchParams()
+                          qs.set('equipe', String(eq.id_equipe))
+                          qs.set('setor', String(eq.setor?.id_setor ?? eq.id_setor))
+                          navigate(`/dashboard/colaboradores?${qs.toString()}`)
+                        }
+                      }}
+                    >
+                      <ItemGroup>
+                        <ItemHeader>
+                          <ItemTitle>
+                            <span className="truncate">{eq.nome_equipe}</span>
+                          </ItemTitle>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              className="inline-flex items-center p-0.5 text-muted-foreground opacity-70 hover:opacity-100 hover:text-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditEquipe(eq)
+                                setEditNome(eq.nome_equipe)
+                                const gestor = gestoresByEquipe[eq.id_equipe]
+                                setEditGestor(gestor ? ((gestor as any).id ?? gestor.id_colaborador) : 'none')
+                                setEditOpen(true)
+                              }}
+                              aria-label="Editar equipe"
+                            >
+                              <SquarePen className="size-3.5" />
+                            </button>
+                            <ChevronRight className="size-4 opacity-60 group-hover:translate-x-0.5 transition-transform" />
+                          </div>
+                        </ItemHeader>
+                        <Item className="mt-2" variant="muted" size="sm">
+                          <ItemContent>
+                            <div className="text-[11px] text-muted-foreground">Gestor</div>
+                            <div className="flex items-center gap-2 text-sm font-medium truncate">
+                              <Avatar className="size-6">
+                                <AvatarImage src={(() => {
+                                  const a = (gestoresByEquipe[eq.id_equipe] as any)?.avatar as unknown
+                                  if (!a) return undefined as unknown as string
+                                  const s = String(a)
+                                  return s.startsWith('data:') ? s : `data:image/png;base64,${s}`
+                                })()} alt="" />
+                                <AvatarFallback>G</AvatarFallback>
+                              </Avatar>
+                              <span className="truncate">{(() => { const g = gestoresByEquipe[eq.id_equipe]; return g ? `${g.nome} ${g.sobrenome}`.trim() : '—' })()}</span>
+                            </div>
+                          </ItemContent>
+                        </Item>
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <Item variant="outline" size="sm">
+                            <ItemContent>
+                              <div className="text-[11px] text-muted-foreground">Setor</div>
+                              <div className="text-sm font-medium truncate">{setorName}</div>
+                            </ItemContent>
+                          </Item>
+                          <Item variant="outline" size="sm">
+                            <ItemContent>
+                              <div className="text-[11px] text-muted-foreground">Colaboradores</div>
+                              <div className="text-lg font-semibold">{(eq as any).colaboradoresCount ?? colaboradores.filter(c => (c.id_equipe ?? (c as any).equipe?.id_equipe) === eq.id_equipe).length}</div>
+                            </ItemContent>
+                          </Item>
+                        </div>
+                      </ItemGroup>
                     </div>
-                  </ItemHeader>
-                  <Item className="mt-2" variant="muted" size="sm">
-                    <ItemContent>
-                      <div className="text-[11px] text-muted-foreground">Gestor</div>
-                      <div className="flex items-center gap-2 text-sm font-medium truncate">
-                        <Avatar className="size-6">
-                          <AvatarImage src={(() => {
-                            const a = (gestoresByEquipe[eq.id_equipe] as any)?.avatar as unknown
-                            if (!a) return undefined as unknown as string
-                            const s = String(a)
-                            return s.startsWith('data:') ? s : `data:image/png;base64,${s}`
-                          })()} alt="" />
-                          <AvatarFallback>G</AvatarFallback>
-                        </Avatar>
-                        <span className="truncate">{(() => { const g = gestoresByEquipe[eq.id_equipe]; return g ? `${g.nome} ${g.sobrenome}`.trim() : '—' })()}</span>
-                      </div>
-                    </ItemContent>
-                  </Item>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    <Item variant="outline" size="sm">
-                      <ItemContent>
-                        <div className="text-[11px] text-muted-foreground">Setor</div>
-                        <div className="text-sm font-medium truncate">{setorName}</div>
-                      </ItemContent>
-                    </Item>
-                    <Item variant="outline" size="sm">
-                      <ItemContent>
-                        <div className="text-[11px] text-muted-foreground">Colaboradores</div>
-                        <div className="text-lg font-semibold">{(eq as any).colaboradoresCount ?? colaboradores.filter(c => (c.id_equipe ?? (c as any).equipe?.id_equipe) === eq.id_equipe).length}</div>
-                      </ItemContent>
-                    </Item>
-                  </div>
-                </ItemGroup>
+                  )
+                })}
               </div>
-            )
-          })}
             </div>
-          </div>
           )}
         </div>
       )}
@@ -594,7 +595,7 @@ export function Equipes() {
                   onChange={(e) => setEditGestor(e.target.value ? Number(e.target.value) : 'none')}
                 >
                   <option value="">Sem gestor</option>
-                  {colaboradores.filter(c => String(((c as any).cargo?.role ?? (c as any).role) ?? '') === 'Gestor').map((c, idx) => {
+                  {colaboradores.filter(c => String(((c as any).cargo?.role ?? (c as any).role) ?? '') === Roles.GESTOR).map((c, idx) => {
                     const cid = (c as any).id ?? (c as any).id_colaborador ?? idx
                     return (
                       <option key={cid} value={cid}>{`${c.nome} ${c.sobrenome}`.trim()}</option>
@@ -685,6 +686,7 @@ export function Equipes() {
     </div>
   )
 }
+
 
 
 

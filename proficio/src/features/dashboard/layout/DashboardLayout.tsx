@@ -104,7 +104,7 @@ export function DashboardLayout() {
         </SidebarHeader>
         <SidebarContent>
           {(() => {
-            const role = user?.role ?? Roles.Colaborador
+            const role = user?.role ?? Roles.COLABORADOR
             const routes = getRoutesForRole(role)
             const general = routes.filter(r => (r.section ?? 'general') === 'general')
             const org = routes.filter(r => r.section === 'org')
@@ -225,7 +225,7 @@ export function DashboardLayout() {
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 {(() => {
-                  const role = user?.role ?? Roles.Colaborador
+                  const role = user?.role ?? Roles.COLABORADOR
                   const currentPath = location.pathname.replace(/^\/dashboard\/?/, '')
                   const currentKey = currentPath.split('/')[0] ?? ''
                   const current = getRoutesForRole(role).find(r => r.path === currentKey)

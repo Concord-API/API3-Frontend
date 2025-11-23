@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { Item, ItemContent, ItemGroup, ItemHeader, ItemTitle } from '@/shared/components/ui/item'
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar'
 import { Skeleton } from '@/shared/components/ui/skeleton'
+import { Roles } from '@/shared/constants/roles'
 
 export function Setores() {
   const { user } = useAuth()
@@ -80,7 +81,7 @@ export function Setores() {
 
   const list = useMemo(() => {
     let base = setores
-    if (user?.role === 'Gestor' as any && mySetorId != null) base = base.filter(s => s.id_setor === mySetorId)
+    if (user?.role === Roles.GESTOR && mySetorId != null) base = base.filter(s => s.id_setor === mySetorId)
     const t = q.trim().toLowerCase()
     if (t) base = base.filter(s => s.nome_setor.toLowerCase().includes(t))
     return base.map(s => {
@@ -149,81 +150,81 @@ export function Setores() {
           <Input placeholder="Buscar setor..." value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <div className="ml-auto flex items-center gap-2">
-          {user?.role === ('Diretor' as any) && (
-          <Dialog open={addOpen} onOpenChange={setAddOpen}>
-            <DialogTrigger asChild>
-              <Button size="icon" className="fixed bottom-6 right-6 h-10 p-4 w-auto rounded-lg   shadow-lg">
-                <Plus className="size-5" />
-                <p>Novo setor</p>
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Novo setor</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-3 py-2">
-                <div className="grid gap-1">
-                  <Label htmlFor="nome-setor">Nome</Label>
-                  <Input id="nome-setor" value={novoNome} onChange={(e) => setNovoNome(e.target.value)} placeholder="Ex.: Tecnologia" />
-                </div>
-                <div className="grid gap-1">
-                  <Label htmlFor="desc-setor">Descrição</Label>
-                  <Input id="desc-setor" value={novaDesc} onChange={(e) => setNovaDesc(e.target.value)} placeholder="Opcional" />
-                </div>
-                {user?.role === ('Diretor' as any) && (
-                  <div className="grid gap-1">
-                    <Label>Diretor responsável (opcional)</Label>
-                    <select
-                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                      value={diretorId === 'none' ? '' : String(diretorId)}
-                      onChange={(e) => setDiretorId(e.target.value ? Number(e.target.value) : 'none')}
-                    >
-                      <option value="">Sem diretor</option>
-                      {colaboradores.filter(c => String(((c as any).cargo?.role ?? (c as any).role) ?? '') === 'Diretor').map(c => {
-                        const cid = (c as any).id ?? (c as any).id_colaborador
-                        return (
-                          <option key={cid} value={cid}>{`${c.nome} ${c.sobrenome}`.trim()}</option>
-                        )
-                      })}
-                    </select>
-                  </div>
-                )}
-              </div>
-              <DialogFooter>
-                <Button
-                  disabled={saving || novoNome.trim().length === 0}
-                  onClick={async () => {
-                    const nome = novoNome.trim()
-                    if (!nome) return
-                    setSaving(true)
-                    try {
-                      const payload: any = { nome, descricao: novaDesc || null, diretorId: diretorId === 'none' ? null : diretorId, status: true }
-                      const { data } = await api.post('/setores', payload)
-                      const created: any = data
-                      const novoSetorObj: Setor = {
-                        id_setor: created.id ?? 0,
-                        nome_setor: created.nome ?? nome,
-                        desc_setor: created.descricao ?? (novaDesc || null),
-                        status: created.status ?? true,
-                        id_diretor: created.diretorId ?? null,
-                        diretor: null,
-                      }
-                      setSetores((prev) => [...prev, novoSetorObj])
-                      toast.success('Setor criado')
-                      setAddOpen(false)
-                      setNovoNome('')
-                      setNovaDesc('')
-                      setDiretorId('none')
-                    } finally {
-                      setSaving(false)
-                    }
-                  }}
-                >
-                  {saving ? 'Salvando...' : 'Salvar'}
+          {user?.role === Roles.DIRETOR && (
+            <Dialog open={addOpen} onOpenChange={setAddOpen}>
+              <DialogTrigger asChild>
+                <Button size="icon" className="fixed bottom-6 right-6 h-10 p-4 w-auto rounded-lg   shadow-lg">
+                  <Plus className="size-5" />
+                  <p>Novo setor</p>
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Novo setor</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-3 py-2">
+                  <div className="grid gap-1">
+                    <Label htmlFor="nome-setor">Nome</Label>
+                    <Input id="nome-setor" value={novoNome} onChange={(e) => setNovoNome(e.target.value)} placeholder="Ex.: Tecnologia" />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="desc-setor">Descrição</Label>
+                    <Input id="desc-setor" value={novaDesc} onChange={(e) => setNovaDesc(e.target.value)} placeholder="Opcional" />
+                  </div>
+                  {user?.role === Roles.DIRETOR && (
+                    <div className="grid gap-1">
+                      <Label>Diretor responsável (opcional)</Label>
+                      <select
+                        className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                        value={diretorId === 'none' ? '' : String(diretorId)}
+                        onChange={(e) => setDiretorId(e.target.value ? Number(e.target.value) : 'none')}
+                      >
+                        <option value="">Sem diretor</option>
+                        {colaboradores.filter(c => String(((c as any).cargo?.role ?? (c as any).role) ?? '') === 'Diretor').map(c => {
+                          const cid = (c as any).id ?? (c as any).id_colaborador
+                          return (
+                            <option key={cid} value={cid}>{`${c.nome} ${c.sobrenome}`.trim()}</option>
+                          )
+                        })}
+                      </select>
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button
+                    disabled={saving || novoNome.trim().length === 0}
+                    onClick={async () => {
+                      const nome = novoNome.trim()
+                      if (!nome) return
+                      setSaving(true)
+                      try {
+                        const payload: any = { nome, descricao: novaDesc || null, diretorId: diretorId === 'none' ? null : diretorId, status: true }
+                        const { data } = await api.post('/setores', payload)
+                        const created: any = data
+                        const novoSetorObj: Setor = {
+                          id_setor: created.id ?? 0,
+                          nome_setor: created.nome ?? nome,
+                          desc_setor: created.descricao ?? (novaDesc || null),
+                          status: created.status ?? true,
+                          id_diretor: created.diretorId ?? null,
+                          diretor: null,
+                        }
+                        setSetores((prev) => [...prev, novoSetorObj])
+                        toast.success('Setor criado')
+                        setAddOpen(false)
+                        setNovoNome('')
+                        setNovaDesc('')
+                        setDiretorId('none')
+                      } finally {
+                        setSaving(false)
+                      }
+                    }}
+                  >
+                    {saving ? 'Salvando...' : 'Salvar'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           )}
           <ButtonGroup>
             <Button variant={mode === 'table' ? 'default' : 'outline'} size="icon" className="transition-none" onClick={() => setMode('table')}>
@@ -279,180 +280,180 @@ export function Setores() {
           <div>
             <div className="mb-2 text-xs font-semibold text-muted-foreground">Ativos</div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {listActive.map(({ setor, equipes, colaboradores, diretor }) => {
-            return (
-              <div
-                key={setor.id_setor}
-                className="group relative flex flex-col rounded-lg border bg-card p-4 text-left transition hover:bg-accent/50 cursor-pointer"
-                onClick={() => {
-                  const qs = new URLSearchParams()
-                  qs.set('setor', String(setor.id_setor))
-                  navigate(`/dashboard/equipes?${qs.toString()}`)
-                }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    const qs = new URLSearchParams()
-                    qs.set('setor', String(setor.id_setor))
-                    navigate(`/dashboard/equipes?${qs.toString()}`)
-                  }
-                }}
-              >
-                <ItemGroup>
-                  <ItemHeader>
-                    <ItemTitle>
-                      <span className="truncate">{setor.nome_setor}</span>
-                    </ItemTitle>
-                    <div className="flex items-center gap-1">
-                      {user?.role === ('Diretor' as any) && (
-                        <button
-                          type="button"
-                          className="inline-flex items-center p-0.5 text-muted-foreground opacity-70 hover:opacity-100 hover:text-foreground"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setEditTarget(setor)
-                            setEditNome(setor.nome_setor)
-                            setEditDesc(setor.desc_setor || '')
-                            setEditDiretorId(setor.id_diretor ?? 'none')
-                            setEditOpen(true)
-                          }}
-                          aria-label="Editar setor"
-                        >
-                          <SquarePen className="size-3.5" />
-                        </button>
-                      )}
-                      <ChevronRight className="size-4 opacity-60 group-hover:translate-x-0.5 transition-transform" />
-                    </div>
-                  </ItemHeader>
-                  <Item className="mt-2" variant="muted" size="sm">
-                    <ItemContent>
-                      <div className="text-[11px] text-muted-foreground">Diretor responsável</div>
-                      <div className="flex items-center gap-2 text-sm font-medium truncate">
-                        <Avatar className="size-6">
-                          <AvatarImage src={(() => {
-                            const a = (diretor as any)?.avatar as unknown
-                            if (!a) return undefined as unknown as string
-                            const s = String(a)
-                            return s.startsWith('data:') ? s : `data:image/png;base64,${s}`
-                          })()} alt="" />
-                          <AvatarFallback>D</AvatarFallback>
-                        </Avatar>
-                        <span className="truncate">{diretor ? `${diretor.nome} ${diretor.sobrenome}`.trim() : '—'}</span>
+              {listActive.map(({ setor, equipes, colaboradores, diretor }) => {
+                return (
+                  <div
+                    key={setor.id_setor}
+                    className="group relative flex flex-col rounded-lg border bg-card p-4 text-left transition hover:bg-accent/50 cursor-pointer"
+                    onClick={() => {
+                      const qs = new URLSearchParams()
+                      qs.set('setor', String(setor.id_setor))
+                      navigate(`/dashboard/equipes?${qs.toString()}`)
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        const qs = new URLSearchParams()
+                        qs.set('setor', String(setor.id_setor))
+                        navigate(`/dashboard/equipes?${qs.toString()}`)
+                      }
+                    }}
+                  >
+                    <ItemGroup>
+                      <ItemHeader>
+                        <ItemTitle>
+                          <span className="truncate">{setor.nome_setor}</span>
+                        </ItemTitle>
+                        <div className="flex items-center gap-1">
+                          {user?.role === Roles.DIRETOR && (
+                            <button
+                              type="button"
+                              className="inline-flex items-center p-0.5 text-muted-foreground opacity-70 hover:opacity-100 hover:text-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditTarget(setor)
+                                setEditNome(setor.nome_setor)
+                                setEditDesc(setor.desc_setor || '')
+                                setEditDiretorId(setor.id_diretor ?? 'none')
+                                setEditOpen(true)
+                              }}
+                              aria-label="Editar setor"
+                            >
+                              <SquarePen className="size-3.5" />
+                            </button>
+                          )}
+                          <ChevronRight className="size-4 opacity-60 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      </ItemHeader>
+                      <Item className="mt-2" variant="muted" size="sm">
+                        <ItemContent>
+                          <div className="text-[11px] text-muted-foreground">Diretor responsável</div>
+                          <div className="flex items-center gap-2 text-sm font-medium truncate">
+                            <Avatar className="size-6">
+                              <AvatarImage src={(() => {
+                                const a = (diretor as any)?.avatar as unknown
+                                if (!a) return undefined as unknown as string
+                                const s = String(a)
+                                return s.startsWith('data:') ? s : `data:image/png;base64,${s}`
+                              })()} alt="" />
+                              <AvatarFallback>D</AvatarFallback>
+                            </Avatar>
+                            <span className="truncate">{diretor ? `${diretor.nome} ${diretor.sobrenome}`.trim() : '—'}</span>
+                          </div>
+                        </ItemContent>
+                      </Item>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <Item variant="outline" size="sm">
+                          <ItemContent>
+                            <div className="text-[11px] text-muted-foreground">Equipes</div>
+                            <div className="text-lg font-semibold">{equipes}</div>
+                          </ItemContent>
+                        </Item>
+                        <Item variant="outline" size="sm">
+                          <ItemContent>
+                            <div className="text-[11px] text-muted-foreground">Colaboradores</div>
+                            <div className="text-lg font-semibold">{colaboradores}</div>
+                          </ItemContent>
+                        </Item>
                       </div>
-                    </ItemContent>
-                  </Item>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    <Item variant="outline" size="sm">
-                      <ItemContent>
-                        <div className="text-[11px] text-muted-foreground">Equipes</div>
-                        <div className="text-lg font-semibold">{equipes}</div>
-                      </ItemContent>
-                    </Item>
-                    <Item variant="outline" size="sm">
-                      <ItemContent>
-                        <div className="text-[11px] text-muted-foreground">Colaboradores</div>
-                        <div className="text-lg font-semibold">{colaboradores}</div>
-                      </ItemContent>
-                    </Item>
+                      {/* Removido orçamento por não se aplicar */}
+                    </ItemGroup>
                   </div>
-                  {/* Removido orçamento por não se aplicar */}
-                </ItemGroup>
-              </div>
-            )
-          })}
-          {listActive.length === 0 && (
-            <div className="px-4 py-10 text-center text-sm text-muted-foreground">Nenhum setor ativo encontrado.</div>
-          )}
+                )
+              })}
+              {listActive.length === 0 && (
+                <div className="px-4 py-10 text-center text-sm text-muted-foreground">Nenhum setor ativo encontrado.</div>
+              )}
             </div>
           </div>
           {listInactive.length > 0 && (
-          <div>
-            <div className="mb-2 text-xs font-semibold text-muted-foreground">Inativos</div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {listInactive.map(({ setor, equipes, colaboradores, diretor }) => {
-            return (
-              <div
-                key={setor.id_setor}
-                className="group relative flex flex-col rounded-lg border bg-card p-4 text-left transition hover:bg-accent/50 cursor-pointer opacity-75"
-                onClick={() => {
-                  const qs = new URLSearchParams()
-                  qs.set('setor', String(setor.id_setor))
-                  navigate(`/dashboard/equipes?${qs.toString()}`)
-                }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    const qs = new URLSearchParams()
-                    qs.set('setor', String(setor.id_setor))
-                    navigate(`/dashboard/equipes?${qs.toString()}`)
-                  }
-                }}
-              >
-                <ItemGroup>
-                  <ItemHeader>
-                    <ItemTitle>
-                      <span className="truncate">{setor.nome_setor}</span>
-                    </ItemTitle>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        className="inline-flex items-center p-0.5 text-muted-foreground opacity-70 hover:opacity-100 hover:text-foreground"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setEditTarget(setor)
-                          setEditNome(setor.nome_setor)
-                          setEditDesc(setor.desc_setor || '')
-                          setEditDiretorId(setor.id_diretor ?? 'none')
-                          setEditOpen(true)
-                        }}
-                        aria-label="Editar setor"
-                      >
-                        <SquarePen className="size-3.5" />
-                      </button>
-                      <ChevronRight className="size-4 opacity-60 group-hover:translate-x-0.5 transition-transform" />
+            <div>
+              <div className="mb-2 text-xs font-semibold text-muted-foreground">Inativos</div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {listInactive.map(({ setor, equipes, colaboradores, diretor }) => {
+                  return (
+                    <div
+                      key={setor.id_setor}
+                      className="group relative flex flex-col rounded-lg border bg-card p-4 text-left transition hover:bg-accent/50 cursor-pointer opacity-75"
+                      onClick={() => {
+                        const qs = new URLSearchParams()
+                        qs.set('setor', String(setor.id_setor))
+                        navigate(`/dashboard/equipes?${qs.toString()}`)
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          const qs = new URLSearchParams()
+                          qs.set('setor', String(setor.id_setor))
+                          navigate(`/dashboard/equipes?${qs.toString()}`)
+                        }
+                      }}
+                    >
+                      <ItemGroup>
+                        <ItemHeader>
+                          <ItemTitle>
+                            <span className="truncate">{setor.nome_setor}</span>
+                          </ItemTitle>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              className="inline-flex items-center p-0.5 text-muted-foreground opacity-70 hover:opacity-100 hover:text-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditTarget(setor)
+                                setEditNome(setor.nome_setor)
+                                setEditDesc(setor.desc_setor || '')
+                                setEditDiretorId(setor.id_diretor ?? 'none')
+                                setEditOpen(true)
+                              }}
+                              aria-label="Editar setor"
+                            >
+                              <SquarePen className="size-3.5" />
+                            </button>
+                            <ChevronRight className="size-4 opacity-60 group-hover:translate-x-0.5 transition-transform" />
+                          </div>
+                        </ItemHeader>
+                        <Item className="mt-2" variant="muted" size="sm">
+                          <ItemContent>
+                            <div className="text-[11px] text-muted-foreground">Diretor responsável</div>
+                            <div className="flex items-center gap-2 text-sm font-medium truncate">
+                              <Avatar className="size-6">
+                                <AvatarImage src={(() => {
+                                  const a = (diretor as any)?.avatar as unknown
+                                  if (!a) return undefined as unknown as string
+                                  const s = String(a)
+                                  return s.startsWith('data:') ? s : `data:image/png;base64,${s}`
+                                })()} alt="" />
+                                <AvatarFallback>D</AvatarFallback>
+                              </Avatar>
+                              <span className="truncate">{diretor ? `${diretor.nome} ${diretor.sobrenome}`.trim() : '—'}</span>
+                            </div>
+                          </ItemContent>
+                        </Item>
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <Item variant="outline" size="sm">
+                            <ItemContent>
+                              <div className="text-[11px] text-muted-foreground">Equipes</div>
+                              <div className="text-lg font-semibold">{equipes}</div>
+                            </ItemContent>
+                          </Item>
+                          <Item variant="outline" size="sm">
+                            <ItemContent>
+                              <div className="text-[11px] text-muted-foreground">Colaboradores</div>
+                              <div className="text-lg font-semibold">{colaboradores}</div>
+                            </ItemContent>
+                          </Item>
+                        </div>
+                      </ItemGroup>
                     </div>
-                  </ItemHeader>
-                  <Item className="mt-2" variant="muted" size="sm">
-                    <ItemContent>
-                      <div className="text-[11px] text-muted-foreground">Diretor responsável</div>
-                      <div className="flex items-center gap-2 text-sm font-medium truncate">
-                        <Avatar className="size-6">
-                          <AvatarImage src={(() => {
-                            const a = (diretor as any)?.avatar as unknown
-                            if (!a) return undefined as unknown as string
-                            const s = String(a)
-                            return s.startsWith('data:') ? s : `data:image/png;base64,${s}`
-                          })()} alt="" />
-                          <AvatarFallback>D</AvatarFallback>
-                        </Avatar>
-                        <span className="truncate">{diretor ? `${diretor.nome} ${diretor.sobrenome}`.trim() : '—'}</span>
-                      </div>
-                    </ItemContent>
-                  </Item>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    <Item variant="outline" size="sm">
-                      <ItemContent>
-                        <div className="text-[11px] text-muted-foreground">Equipes</div>
-                        <div className="text-lg font-semibold">{equipes}</div>
-                      </ItemContent>
-                    </Item>
-                    <Item variant="outline" size="sm">
-                      <ItemContent>
-                        <div className="text-[11px] text-muted-foreground">Colaboradores</div>
-                        <div className="text-lg font-semibold">{colaboradores}</div>
-                      </ItemContent>
-                    </Item>
-                  </div>
-                </ItemGroup>
+                  )
+                })}
               </div>
-            )
-          })}
             </div>
-          </div>
           )}
         </div>
       )}
@@ -471,7 +472,7 @@ export function Setores() {
               <Label htmlFor="edit-desc-setor">Descrição</Label>
               <Input id="edit-desc-setor" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Opcional" />
             </div>
-            {user?.role === ('Diretor' as any) && (
+            {user?.role === Roles.DIRETOR && (
               <div className="grid gap-1">
                 <Label>Diretor responsável (opcional)</Label>
                 <select
@@ -575,5 +576,6 @@ export function Setores() {
     </div>
   )
 }
+
 
 

@@ -186,7 +186,7 @@ export function Colaboradores() {
     const t = q.trim().toLowerCase()
     let base = items
 
-    if (user?.role === Roles.Gestor) {
+    if (user?.role === Roles.GESTOR) {
       base = base.filter(c => {
         const roleRaw = ((c as any).cargo?.role ?? (c as any).role ?? '') as string
         const role = String(roleRaw).trim().toLowerCase()
@@ -206,7 +206,7 @@ export function Colaboradores() {
       ) === selectedEquipe)
     }
 
-    if ((user?.role === Roles.Diretor || user?.role === Roles.Gestor) && selectedCompetencia !== 'all') {
+    if ((user?.role === Roles.DIRETOR || user?.role === Roles.GESTOR) && selectedCompetencia !== 'all') {
       base = base.filter(c => {
         const colabId = (c as any).id_colaborador ?? (c as any).id
         if (!colabId || !Number.isFinite(Number(colabId))) return false
@@ -276,7 +276,7 @@ export function Colaboradores() {
         <div className="w-full max-w-sm">
           <Input placeholder="Buscar colaborador..." value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
-        {(user?.role === Roles.Diretor || user?.role === Roles.Gestor) && (
+        {(user?.role === Roles.DIRETOR || user?.role === Roles.GESTOR) && (
           <>
             <div className="relative" ref={setorRef}>
               <div className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm cursor-pointer" onClick={() => { setShowSetor((v) => !v); setShowEquipe(false); setShowCompetencia(false) }}>
@@ -362,7 +362,7 @@ export function Colaboradores() {
                 </div>
               )}
             </div>
-            {user?.role === Roles.Diretor && (
+            {user?.role === Roles.DIRETOR && (
               <div className="relative" ref={competenciaRef}>
                 <div className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm cursor-pointer" onClick={() => { setShowCompetencia((v) => !v); setShowSetor(false); setShowEquipe(false) }}>
                   <span className="truncate max-w-[12rem]">{selectedCompetencia === 'all' ? 'Todas as competências' : competencias.find(c => c.id_competencia === selectedCompetencia)?.nome ?? 'Competência'}</span>
@@ -482,7 +482,7 @@ export function Colaboradores() {
                       >
                         Ver perfil
                       </Button>
-                      {(user?.role === Roles.Diretor || user?.role === Roles.Gestor) && (
+                      {(user?.role === Roles.DIRETOR || user?.role === Roles.GESTOR) && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -536,7 +536,7 @@ export function Colaboradores() {
                       )}
                     </div>
                   </ItemTitle>
-                  {(user?.role === Roles.Diretor || user?.role === Roles.Gestor) && (
+                  {(user?.role === Roles.DIRETOR || user?.role === Roles.GESTOR) && (
                     <div className="ml-auto">
                       <Button
                         size="sm"
