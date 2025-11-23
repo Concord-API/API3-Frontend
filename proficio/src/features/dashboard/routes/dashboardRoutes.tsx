@@ -10,6 +10,7 @@ import { Competencias } from '@/features/dashboard/pages/Competencias'
 import { Perfil } from '@/features/dashboard/pages/Perfil'
 import { Home, User, Users as UsersIcon, Sparkles, Building2, Layers, ClipboardList, Briefcase, CheckCircle } from 'lucide-react'
 import { Cargos } from '@/features/dashboard/pages/Cargos'
+import { Squads } from '@/features/dashboard/pages/Squads'
 import { MinhasAvaliacoes } from '@/features/dashboard/pages/MinhasAvaliacoes'
 import { Avaliacoes } from '@/features/dashboard/pages/Avaliacoes'
 import { AprovacaoCompetencias } from '@/features/dashboard/pages/AprovacaoCompetencias'
@@ -36,12 +37,13 @@ export const dashboardRoutes: DashboardRoute[] = [
   { path: 'competencias', element: <Competencias />, label: 'Minhas Competências', icon: Sparkles, allowedRoles: [Roles.COLABORADOR, Roles.GESTOR, Roles.DIRETOR], section: 'general' },
   { path: 'minhas-avaliacoes', element: <MinhasAvaliacoes />, label: 'Minhas Avaliações', icon: ClipboardList, allowedRoles: [Roles.COLABORADOR, Roles.GESTOR, Roles.DIRETOR], section: 'general' },
   { path: 'cargos', element: <Cargos />, label: 'Cargos', icon: Briefcase, allowedRoles: [Roles.GESTOR, Roles.DIRETOR], section: 'org' },
+  { path: 'squads', element: <Squads />, label: 'Squads', icon: Layers, allowedRoles: [Roles.GESTOR, Roles.DIRETOR], section: 'org' },
   { path: 'setores', element: <Setores />, label: 'Setores', icon: Building2, allowedRoles: [Roles.GESTOR, Roles.DIRETOR], section: 'org' },
   { path: 'equipes', element: <Equipes />, label: 'Equipes', icon: Layers, allowedRoles: [Roles.GESTOR, Roles.DIRETOR], section: 'org' },
   { path: 'colaboradores', element: <Colaboradores />, label: 'Colaboradores', icon: UsersIcon, allowedRoles: [Roles.GESTOR, Roles.DIRETOR], section: 'org' },
   { path: 'avaliacoes', element: <Avaliacoes />, label: 'Avaliações', icon: ClipboardList, allowedRoles: [Roles.GESTOR, Roles.DIRETOR], section: 'org' },
   { path: 'aprovacao-competencias', element: <AprovacaoCompetencias />, label: 'Aprovação de Competências', icon: CheckCircle, allowedRoles: [Roles.DIRETOR], section: 'org' },
-]
+
 
 export function getRoutesForRole(role: UserRole): DashboardRoute[] {
   return dashboardRoutes.filter((r) => r.allowedRoles.includes(role))

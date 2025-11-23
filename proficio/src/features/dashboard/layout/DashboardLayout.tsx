@@ -150,7 +150,7 @@ export function DashboardLayout() {
               { label: 'Meu perfil', keys: ['perfil', 'competencias', 'minhas-avaliacoes'] },
             ]
             const orgGroups = [
-              { label: 'Estrutura', keys: ['cargos', 'setores', 'equipes'] },
+              { label: 'Estrutura', keys: ['cargos', 'squads', 'setores', 'equipes'] },
               { label: 'Pessoas', keys: ['colaboradores'] },
               { label: 'Avaliações', keys: ['avaliacoes', 'aprovacao-competencias'] },
             ]
