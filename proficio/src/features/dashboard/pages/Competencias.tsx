@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { api } from '@/shared/lib/api'
 import type { ColaboradorCompetencia, Competencia } from '@/shared/types'
-import { Check, Trash, ChevronDown, Plus } from 'lucide-react'
+import { Check, Trash, ChevronDown, Plus, AlertTriangle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip'
 import { toast } from 'sonner'
 import { ButtonGroup } from '@/shared/components/ui/button-group'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/shared/components/ui/command'
@@ -81,9 +82,9 @@ export function Competencias() {
   }, [userCompetencias])
 
   const levelCounts = useMemo(() => {
-    const counts: Record<1|2|3|4|5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+    const counts: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
     for (const uc of userCompetencias) {
-      const v = Math.min(5, Math.max(1, uc.proeficiencia as number)) as 1|2|3|4|5
+      const v = Math.min(5, Math.max(1, uc.proeficiencia as number)) as 1 | 2 | 3 | 4 | 5
       counts[v] += 1
     }
     return counts
@@ -118,7 +119,7 @@ export function Competencias() {
         const hasNested = uc && typeof uc === 'object' && uc.competencia
         const competencia = hasNested
           ? { ...uc.competencia, tipo: normalizeTipo(uc.competencia.tipo) }
-          : { id_competencia: uc.id, nome: uc.nome, tipo: normalizeTipo(uc.tipo) }
+          : { id_competencia: uc.idCompetencia, nome: uc.nome, tipo: normalizeTipo(uc.tipo), aprovada: uc.aprovada }
         return {
           ...uc,
           id_competencia: hasNested ? (uc.id_competencia ?? competencia.id_competencia) : competencia.id_competencia,
@@ -164,7 +165,7 @@ export function Competencias() {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[0,1,2,3].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <Card key={i}>
               <CardHeader>
                 <Skeleton className="h-4 w-24" />
@@ -269,105 +270,117 @@ export function Competencias() {
               <CardDescription>Visão geral das suas competências e níveis</CardDescription>
             </div>
             <Sheet>
-            <SheetTrigger asChild>
-              <Button>Adicionar</Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="sm:max-w-[520px] px-4">
-              <SheetHeader>
-                <SheetTitle>Adicionar competência</SheetTitle>
-                <SheetDescription>Escolha uma existente ou crie uma nova</SheetDescription>
-              </SheetHeader>
-              <div className="mt-4 space-y-5">
-            <div className="space-y-2">
-              <Label>Competência</Label>
-              <div ref={comboRef}>
-                {!comboOpen ? (
-                  <Button variant="outline" className="justify-between w-full" onClick={() => setComboOpen(true)}>
-                    <span className="truncate">{(isCreating && query) ? `Criar: ${query}` : (selected?.nome || (query ? query : 'Selecionar/Buscar'))}</span>
-                    <ChevronDown className="size-4" />
-                  </Button>
-                ) : (
-                  <div className="rounded-md border">
-                    <Command>
-                      <CommandInput
-                        placeholder="Digite para buscar ou criar..."
-                        value={query}
-                        onValueChange={(v) => { setQuery(v); if (selected) setSelected(null); setIsCreating(false) }}
-                      />
-                      <CommandList>
-                        <CommandEmpty>
-                          {query ? (
-                            <div className="px-2 py-2 text-sm">
-                              Nenhuma encontrada. Se preferir, continue para criar "{query}".
-                            </div>
-                          ) : (
-                            'Digite para buscar'
-                          )}
-                        </CommandEmpty>
-                        <CommandGroup>
-                          {filtered.map((c) => (
-                            <CommandItem key={c.id_competencia} onSelect={() => { setSelected(c); setQuery(c.nome); setIsCreating(false); setComboOpen(false) }}>
-                              <Check className={`mr-2 size-4 ${selected?.id_competencia === c.id_competencia ? 'opacity-100' : 'opacity-0'}`} />
-                              <span className="truncate">{c.nome}</span>
-                            </CommandItem>
-                          ))}
-                          {query && !allCompetencias.some((a) => (a?.nome || '').toLowerCase() === query.toLowerCase()) && (
-                            <CommandItem className="text-primary" onSelect={() => { setSelected(null); setIsCreating(true); setComboOpen(false) }}>
-                              <Plus className="mr-2 size-4" />
-                              Criar "{query}" como nova competência
-                            </CommandItem>
-                          )}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </div>
-                )}
-              </div>
-              <div className="text-xs text-muted-foreground">{isCreating ? (
-                <>Você criará a competência "{query}". Defina o Tipo e o Nível e clique em Adicionar.</>
-              ) : (
-                <>Se não existir, continue preenchendo o Tipo e o Nível abaixo e clique em Adicionar.</>
-              )}</div>
-            </div>
-                {!selected && (
+              <SheetTrigger asChild>
+                <Button>Adicionar</Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="sm:max-w-[520px] px-4">
+                <SheetHeader>
+                  <SheetTitle>Adicionar competência</SheetTitle>
+                  <SheetDescription>Escolha uma existente ou crie uma nova</SheetDescription>
+                </SheetHeader>
+                <div className="mt-4 space-y-5">
                   <div className="space-y-2">
-                    <Label>Tipo</Label>
-                    <ButtonGroup>
-                      <Button variant={newType === 0 ? 'default' : 'outline'} onClick={() => setNewType(0)}>HARD</Button>
-                      <Button variant={newType === 1 ? 'default' : 'outline'} onClick={() => setNewType(1)}>SOFT</Button>
-                    </ButtonGroup>
+                    <Label>Competência</Label>
+                    <div ref={comboRef}>
+                      {!comboOpen ? (
+                        <Button variant="outline" className="justify-between w-full" onClick={() => setComboOpen(true)}>
+                          <span className="truncate">{(isCreating && query) ? `Criar: ${query}` : (selected?.nome || (query ? query : 'Selecionar/Buscar'))}</span>
+                          <ChevronDown className="size-4" />
+                        </Button>
+                      ) : (
+                        <div className="rounded-md border">
+                          <Command>
+                            <CommandInput
+                              placeholder="Digite para buscar ou criar..."
+                              value={query}
+                              onValueChange={(v) => { setQuery(v); if (selected) setSelected(null); setIsCreating(false) }}
+                            />
+                            <CommandList>
+                              <CommandEmpty>
+                                {query ? (
+                                  <div className="px-2 py-2 text-sm">
+                                    Nenhuma encontrada. Se preferir, continue para criar "{query}".
+                                  </div>
+                                ) : (
+                                  'Digite para buscar'
+                                )}
+                              </CommandEmpty>
+                              <CommandGroup>
+                                {filtered.map((c) => (
+                                  <CommandItem key={c.id_competencia} onSelect={() => { setSelected(c); setQuery(c.nome); setIsCreating(false); setComboOpen(false) }}>
+                                    <Check className={`mr-2 size-4 ${selected?.id_competencia === c.id_competencia ? 'opacity-100' : 'opacity-0'}`} />
+                                    <span className="truncate">{c.nome}</span>
+                                    {c.aprovada === false && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <AlertTriangle className="ml-2 size-3 text-yellow-500" />
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Aguardando aprovação</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                  </CommandItem>
+                                ))}
+                                {query && !allCompetencias.some((a) => (a?.nome || '').toLowerCase() === query.toLowerCase()) && (
+                                  <CommandItem className="text-primary" onSelect={() => { setSelected(null); setIsCreating(true); setComboOpen(false) }}>
+                                    <Plus className="mr-2 size-4" />
+                                    Criar "{query}" como nova competência
+                                  </CommandItem>
+                                )}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{isCreating ? (
+                      <>Você criará a competência "{query}". Defina o Tipo e o Nível e clique em Adicionar.</>
+                    ) : (
+                      <>Se não existir, continue preenchendo o Tipo e o Nível abaixo e clique em Adicionar.</>
+                    )}</div>
                   </div>
-                )}
-                <div className="space-y-2">
-                  <Label>Nível de proeficiência</Label>
-                  <ButtonGroup>
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <Button key={n} variant={newLevel === n ? 'default' : 'outline'} onClick={() => setNewLevel(n)}>
-                        {n}
-                      </Button>
-                    ))}
-                  </ButtonGroup>
-                  <div className="text-xs text-muted-foreground">{NIVEL_LABEL[newLevel]}</div>
+                  {!selected && (
+                    <div className="space-y-2">
+                      <Label>Tipo</Label>
+                      <ButtonGroup>
+                        <Button variant={newType === 0 ? 'default' : 'outline'} onClick={() => setNewType(0)}>HARD</Button>
+                        <Button variant={newType === 1 ? 'default' : 'outline'} onClick={() => setNewType(1)}>SOFT</Button>
+                      </ButtonGroup>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label>Nível de proeficiência</Label>
+                    <ButtonGroup>
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <Button key={n} variant={newLevel === n ? 'default' : 'outline'} onClick={() => setNewLevel(n)}>
+                          {n}
+                        </Button>
+                      ))}
+                    </ButtonGroup>
+                    <div className="text-xs text-muted-foreground">{NIVEL_LABEL[newLevel]}</div>
+                  </div>
                 </div>
-              </div>
-              <SheetFooter className="mt-6">
-                <SheetClose asChild>
-                  <Button variant="outline">Cancelar</Button>
-                </SheetClose>
-                <Button onClick={handleAdd} disabled={loading || !query.trim()}>Adicionar</Button>
-              </SheetFooter>
-            </SheetContent>
+                <SheetFooter className="mt-6">
+                  <SheetClose asChild>
+                    <Button variant="outline">Cancelar</Button>
+                  </SheetClose>
+                  <Button onClick={handleAdd} disabled={loading || !query.trim()}>Adicionar</Button>
+                </SheetFooter>
+              </SheetContent>
             </Sheet>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex-1 min-w-48">
               <Input placeholder="Buscar por nome..." value={queryTable} onChange={(e) => setQueryTable(e.target.value)} />
             </div>
-			<ButtonGroup>
-				<Button variant={filterType === 'ALL' ? 'default' : 'outline'} onClick={() => setFilterType('ALL')}>Todos</Button>
-				<Button variant={filterType === 'HARD' ? 'default' : 'outline'} onClick={() => setFilterType('HARD')}>HARD</Button>
-				<Button variant={filterType === 'SOFT' ? 'default' : 'outline'} onClick={() => setFilterType('SOFT')}>SOFT</Button>
-			</ButtonGroup>
+            <ButtonGroup>
+              <Button variant={filterType === 'ALL' ? 'default' : 'outline'} onClick={() => setFilterType('ALL')}>Todos</Button>
+              <Button variant={filterType === 'HARD' ? 'default' : 'outline'} onClick={() => setFilterType('HARD')}>HARD</Button>
+              <Button variant={filterType === 'SOFT' ? 'default' : 'outline'} onClick={() => setFilterType('SOFT')}>SOFT</Button>
+            </ButtonGroup>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">Ordenar</Button>
@@ -414,7 +427,21 @@ export function Competencias() {
                   return (
                     <tr key={uc.id} className="border-t">
                       <td className="py-3 pr-4">
-                        <div className="font-medium truncate">{uc.competencia?.nome}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium truncate">{uc.competencia?.nome}</div>
+                          {uc.competencia?.aprovada === false && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <AlertTriangle className="size-4 text-yellow-500" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Aguardando aprovação</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 pr-4">
                         <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${typeBadge}`}>

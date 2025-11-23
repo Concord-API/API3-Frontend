@@ -57,6 +57,7 @@ export interface Competencia {
     id_competencia: number;
     nome: string;
     tipo: CompetenciaTipo;
+    aprovada?: boolean;
 }
 
 export interface ColaboradorCompetencia {
