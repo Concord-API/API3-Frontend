@@ -3,7 +3,7 @@ import { Input } from '@/shared/components/ui/input'
 import { Button } from '@/shared/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { api } from '@/shared/lib/api'
-import type { Colaborador, Setor, Equipe, Cargo, Competencia, ColaboradorCompetencia } from '@/shared/types'
+import type { Colaborador, Setor, Equipe, Cargo, Competencia, ColaboradorCompetencia, Squad } from '@/shared/types'
 import { List, LayoutGrid, Plus } from 'lucide-react'
 import { CollaboratorProfileModal } from '@/features/dashboard/components/CollaboratorProfileModal'
 import { useAuth } from '@/features/auth/hooks/useAuth'
@@ -25,9 +25,11 @@ export function Colaboradores() {
   const navigate = useNavigate()
   const params = new URLSearchParams(location.search)
   const setorParam = params.get('setor')
+  const squadParam = params.get('squad')
   const equipeParam = params.get('equipe')
   const competenciaParam = params.get('competencia')
   const proeficienciaParam = params.get('proeficiencia')
+  const cargoParam = params.get('cargo')
   const filterSetorFromUrl = setorParam ? Number(setorParam) : NaN
   const filterEquipeFromUrl = equipeParam ? Number(equipeParam) : NaN
   const filterCompetenciaFromUrl = competenciaParam ? Number(competenciaParam) : NaN
@@ -43,19 +45,29 @@ export function Colaboradores() {
   const [cargos, setCargos] = useState<Cargo[]>([])
   const [competencias, setCompetencias] = useState<Competencia[]>([])
   const [competenciasByColab, setCompetenciasByColab] = useState<Record<number, ColaboradorCompetencia[]>>({})
+  const [selectedCargo, setSelectedCargo] = useState<string | 'all'>(cargoParam ?? 'all')
   const [selectedSetor, setSelectedSetor] = useState<number | 'all'>(isFinite(filterSetorFromUrl) ? filterSetorFromUrl : 'all')
+  const [selectedSquad, setSelectedSquad] = useState<number | 'all'>(squadParam && !Number.isNaN(Number(squadParam)) ? Number(squadParam) : 'all')
   const [selectedEquipe, setSelectedEquipe] = useState<number | 'all'>(isFinite(filterEquipeFromUrl) ? filterEquipeFromUrl : 'all')
   const [selectedCompetencia, setSelectedCompetencia] = useState<number | 'all'>(isFinite(filterCompetenciaFromUrl) ? filterCompetenciaFromUrl : 'all')
   const [selectedProeficiencia] = useState<number | 'all'>(isFinite(filterProeficienciaFromUrl) ? filterProeficienciaFromUrl : 'all')
   const [showSetor, setShowSetor] = useState(false)
   const [showEquipe, setShowEquipe] = useState(false)
   const [showCompetencia, setShowCompetencia] = useState(false)
+  const [showSquad, setShowSquad] = useState(false)
+  const [showCargo, setShowCargo] = useState(false)
   const [setorQuery, setSetorQuery] = useState('')
   const [equipeQuery, setEquipeQuery] = useState('')
   const [competenciaQuery, setCompetenciaQuery] = useState('')
+  const [squadQuery, setSquadQuery] = useState('')
+  const [cargoQuery, setCargoQuery] = useState('')
   const setorRef = useRef<HTMLDivElement | null>(null)
   const equipeRef = useRef<HTMLDivElement | null>(null)
   const competenciaRef = useRef<HTMLDivElement | null>(null)
+  const squadRef = useRef<HTMLDivElement | null>(null)
+  const cargoRef = useRef<HTMLDivElement | null>(null)
+  const [squads, setSquads] = useState<Squad[]>([])
+  const [squadMemberIds, setSquadMemberIds] = useState<Set<number>>(new Set())
   const [addOpen, setAddOpen] = useState(false)
   const [evalOpen, setEvalOpen] = useState(false)
   const [evaluationId, setEvaluationId] = useState<number | null>(null)
@@ -71,6 +83,10 @@ export function Colaboradores() {
       if (!clickedInsideSetor) setShowSetor(false)
       if (!clickedInsideEquipe) setShowEquipe(false)
       if (!clickedInsideCompetencia) setShowCompetencia(false)
+      const clickedInsideSquad = squadRef.current?.contains(target as Node) ?? false
+      if (!clickedInsideSquad) setShowSquad(false)
+      const clickedInsideCargo = cargoRef.current?.contains(target as Node) ?? false
+      if (!clickedInsideCargo) setShowCargo(false)
     }
     document.addEventListener('mousedown', onDocMouseDown)
     return () => document.removeEventListener('mousedown', onDocMouseDown)
@@ -84,8 +100,9 @@ export function Colaboradores() {
       api.get<any[]>('/equipes?status=all'),
       api.get<Cargo[]>('/cargos'),
       api.get<Competencia[]>('/competencias'),
+      api.get<any[]>('/squads?status=all'),
     ])
-      .then(([c, s, e, cg, comps]) => {
+      .then(([c, s, e, cg, comps, sq]) => {
         setItems(c.data)
         const mappedSetores: Setor[] = (s.data || []).map((vm: any) => ({
           id_setor: vm.id ?? vm.id_setor,
@@ -110,9 +127,40 @@ export function Colaboradores() {
           tipo: Number(vm.tipo ?? 0) as 0 | 1,
         }))
         setCompetencias(mappedCompetencias)
+        const mappedSquads: Squad[] = (sq.data || []).map((vm: any) => ({
+          id: vm.id ?? vm.id_squad ?? 0,
+          nome: vm.nome ?? vm.nome_squad ?? '',
+          descricao: vm.descricao ?? vm.desc_squad ?? null,
+          status: vm.status ?? true,
+          membrosCount: vm.membrosCount ?? 0,
+          liderId: vm.liderId ?? null,
+        }))
+        setSquads(mappedSquads)
       })
       .finally(() => setInitialLoading(false))
   }, [])
+  useEffect(() => {
+    async function loadSquadMembers() {
+      if (selectedSquad === 'all') {
+        setSquadMemberIds(new Set())
+        return
+      }
+      try {
+        const res = await api.get<any[]>(`/squads/${encodeURIComponent(selectedSquad)}/colaboradores`)
+        const ids = new Set<number>()
+        const raw = Array.isArray(res.data) ? res.data : []
+        for (const it of raw) {
+          const idValue = (typeof it === 'object') ? ((it as any).id ?? (it as any).id_colaborador) : it
+          const idNum = Number(idValue)
+          if (Number.isFinite(idNum)) ids.add(idNum)
+        }
+        setSquadMemberIds(ids)
+      } catch {
+        setSquadMemberIds(new Set())
+      }
+    }
+    loadSquadMembers()
+  }, [selectedSquad])
 
   useEffect(() => {
     if (!user?.id) return
@@ -221,10 +269,24 @@ export function Colaboradores() {
         return hasCompetencia
       })
     }
+    if (selectedSquad !== 'all') {
+      base = base.filter(c => {
+        const colabId = Number((c as any).id_colaborador ?? (c as any).id)
+        if (!Number.isFinite(colabId)) return false
+        return squadMemberIds.has(colabId)
+      })
+    }
+
+    if (selectedCargo !== 'all') {
+      base = base.filter(c => {
+        const cargoNome = (c as any).cargoNome ?? c.cargo?.nome_cargo ?? ''
+        return String(cargoNome).toLowerCase() === String(selectedCargo).toLowerCase()
+      })
+    }
 
     if (!t) return base
     return base.filter(c => `${c.nome} ${c.sobrenome}`.toLowerCase().includes(t) || (c as any).email?.toLowerCase()?.includes(t))
-  }, [q, items, user?.role, myTeamId, selectedSetor, selectedEquipe, selectedCompetencia, selectedProeficiencia, competenciasByColab])
+  }, [q, items, user?.role, myTeamId, selectedSetor, selectedEquipe, selectedCompetencia, selectedProeficiencia, competenciasByColab, selectedSquad, squadMemberIds, selectedCargo])
 
   if (initialLoading) {
     return (
@@ -278,6 +340,98 @@ export function Colaboradores() {
         </div>
         {(user?.role === Roles.Diretor || user?.role === Roles.Gestor) && (
           <>
+            <div className="relative" ref={cargoRef}>
+              <div className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm cursor-pointer" onClick={() => { setShowCargo((v) => !v); setShowSetor(false); setShowEquipe(false); setShowCompetencia(false); setShowSquad(false) }}>
+                <span className="truncate max-w-[12rem]">{selectedCargo === 'all' ? 'Todos os cargos' : selectedCargo}</span>
+                <ChevronDown className="size-4 opacity-60" />
+              </div>
+              {showCargo && (
+                <div className="absolute z-20 mt-1 w-64 rounded-md border bg-popover shadow-xs">
+                  <Command>
+                    <CommandInput placeholder="Filtrar cargo..." value={cargoQuery} onValueChange={setCargoQuery} />
+                    <CommandList>
+                      <CommandEmpty>Nenhum cargo</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem onSelect={() => {
+                          setSelectedCargo('all')
+                          setShowCargo(false)
+                          setCargoQuery('')
+                          const qs = new URLSearchParams()
+                          if (selectedSetor !== 'all') qs.set('setor', String(selectedSetor))
+                          if (selectedEquipe !== 'all') qs.set('equipe', String(selectedEquipe))
+                          if (selectedCompetencia !== 'all') qs.set('competencia', String(selectedCompetencia))
+                          if (selectedProeficiencia !== 'all') qs.set('proeficiencia', String(selectedProeficiencia))
+                          if (selectedSquad !== 'all') qs.set('squad', String(selectedSquad))
+                          navigate(qs.toString() ? `/dashboard/colaboradores?${qs.toString()}` : '/dashboard/colaboradores')
+                        }}>Todos</CommandItem>
+                        {cargos
+                          .filter(c => (c.nome_cargo || '').toLowerCase().includes(cargoQuery.toLowerCase()))
+                          .map(c => (
+                            <CommandItem key={c.id_cargo} onSelect={() => {
+                              setSelectedCargo(c.nome_cargo)
+                              setShowCargo(false)
+                              setCargoQuery('')
+                              const qs = new URLSearchParams()
+                              qs.set('cargo', c.nome_cargo)
+                              if (selectedSetor !== 'all') qs.set('setor', String(selectedSetor))
+                              if (selectedEquipe !== 'all') qs.set('equipe', String(selectedEquipe))
+                              if (selectedCompetencia !== 'all') qs.set('competencia', String(selectedCompetencia))
+                              if (selectedProeficiencia !== 'all') qs.set('proeficiencia', String(selectedProeficiencia))
+                              if (selectedSquad !== 'all') qs.set('squad', String(selectedSquad))
+                              navigate(`/dashboard/colaboradores?${qs.toString()}`)
+                            }}>{c.nome_cargo}</CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </div>
+              )}
+            </div>
+            <div className="relative" ref={squadRef}>
+              <div className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm cursor-pointer" onClick={() => { setShowSquad((v) => !v); setShowSetor(false); setShowEquipe(false); setShowCompetencia(false) }}>
+                <span className="truncate max-w-[12rem]">{selectedSquad === 'all' ? 'Todos os squads' : squads.find(s => s.id === selectedSquad)?.nome ?? 'Squad'}</span>
+                <ChevronDown className="size-4 opacity-60" />
+              </div>
+              {showSquad && (
+                <div className="absolute z-20 mt-1 w-64 rounded-md border bg-popover shadow-xs">
+                  <Command>
+                    <CommandInput placeholder="Filtrar squad..." value={squadQuery} onValueChange={setSquadQuery} />
+                    <CommandList>
+                      <CommandEmpty>Nenhum squad</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem onSelect={() => {
+                          setSelectedSquad('all')
+                          setShowSquad(false)
+                          setSquadQuery('')
+                          const qs = new URLSearchParams()
+                          if (selectedSetor !== 'all') qs.set('setor', String(selectedSetor))
+                          if (selectedEquipe !== 'all') qs.set('equipe', String(selectedEquipe))
+                          if (selectedCompetencia !== 'all') qs.set('competencia', String(selectedCompetencia))
+                          if (selectedProeficiencia !== 'all') qs.set('proeficiencia', String(selectedProeficiencia))
+                          navigate(qs.toString() ? `/dashboard/colaboradores?${qs.toString()}` : '/dashboard/colaboradores')
+                        }}>Todos</CommandItem>
+                        {squads
+                          .filter(s => s.nome.toLowerCase().includes(squadQuery.toLowerCase()))
+                          .map(s => (
+                            <CommandItem key={s.id} onSelect={() => {
+                              setSelectedSquad(s.id)
+                              setShowSquad(false)
+                              setSquadQuery('')
+                              const qs = new URLSearchParams()
+                              qs.set('squad', String(s.id))
+                              if (selectedSetor !== 'all') qs.set('setor', String(selectedSetor))
+                              if (selectedEquipe !== 'all') qs.set('equipe', String(selectedEquipe))
+                              if (selectedCompetencia !== 'all') qs.set('competencia', String(selectedCompetencia))
+                              if (selectedProeficiencia !== 'all') qs.set('proeficiencia', String(selectedProeficiencia))
+                              navigate(`/dashboard/colaboradores?${qs.toString()}`)
+                            }}>{s.nome}</CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </div>
+              )}
+            </div>
             <div className="relative" ref={setorRef}>
               <div className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm cursor-pointer" onClick={() => { setShowSetor((v) => !v); setShowEquipe(false); setShowCompetencia(false) }}>
                 <span className="truncate max-w-[12rem]">{selectedSetor === 'all' ? 'Todos os setores' : setores.find(s => s.id_setor === selectedSetor)?.nome_setor ?? 'Setor'}</span>
