@@ -3,6 +3,7 @@ import { Input } from '@/shared/components/ui/input'
 import { api } from '@/shared/lib/api'
 import type { Cargo, Setor } from '@/shared/types'
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import { useNavigate } from 'react-router-dom'
 import { ButtonGroup } from '@/shared/components/ui/button-group'
 import { Button } from '@/shared/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/shared/components/ui/dialog'
@@ -19,6 +20,7 @@ type ViewMode = 'table' | 'grid'
 
 export function Cargos() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [mode, setMode] = useState<ViewMode>('grid')
   const [q, setQ] = useState('')
   const [items, setItems] = useState<Cargo[]>([])
@@ -386,7 +388,19 @@ export function Cargos() {
             <div className="mb-2 text-xs font-semibold text-muted-foreground">Ativos</div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {active.map(c => (
-                <div key={c.id_cargo} className="group relative flex flex-col rounded-lg border bg-card p-4 text-left transition hover:bg-accent/50">
+                <div
+                  key={c.id_cargo}
+                  className="group relative flex flex-col rounded-lg border bg-card p-4 text-left transition hover:bg-accent/50 cursor-pointer"
+                  onClick={() => navigate(`/dashboard/colaboradores?cargo=${encodeURIComponent(c.nome_cargo)}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      navigate(`/dashboard/colaboradores?cargo=${encodeURIComponent(c.nome_cargo)}`)
+                    }
+                  }}
+                >
                   <ItemGroup>
                     <ItemHeader>
                       <ItemTitle>
@@ -442,8 +456,20 @@ export function Cargos() {
             <div>
               <div className="mb-2 text-xs font-semibold text-muted-foreground">Inativos</div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {inactive.map(c => (
-                  <div key={c.id_cargo} className="group relative flex flex-col rounded-lg border bg-card p-4 text-left transition hover:bg-accent/50 opacity-75">
+              {inactive.map(c => (
+                  <div
+                    key={c.id_cargo}
+                    className="group relative flex flex-col rounded-lg border bg-card p-4 text-left transition hover:bg-accent/50 opacity-75 cursor-pointer"
+                    onClick={() => navigate(`/dashboard/colaboradores?cargo=${encodeURIComponent(c.nome_cargo)}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        navigate(`/dashboard/colaboradores?cargo=${encodeURIComponent(c.nome_cargo)}`)
+                      }
+                    }}
+                  >
                     <ItemGroup>
                       <ItemHeader>
                         <ItemTitle>
