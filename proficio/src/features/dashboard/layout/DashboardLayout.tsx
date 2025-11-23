@@ -152,7 +152,7 @@ export function DashboardLayout() {
             const orgGroups = [
               { label: 'Estrutura', keys: ['cargos', 'setores', 'equipes'] },
               { label: 'Pessoas', keys: ['colaboradores'] },
-              { label: 'Avaliações', keys: ['avaliacoes'] },
+              { label: 'Avaliações', keys: ['avaliacoes', 'aprovacao-competencias'] },
             ]
             return (
               <>
