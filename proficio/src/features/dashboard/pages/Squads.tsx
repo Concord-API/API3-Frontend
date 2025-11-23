@@ -133,7 +133,7 @@ export function Squads() {
           <Input placeholder="Buscar squad..." value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <div className="ml-auto flex items-center gap-2">
-          {user?.role === Roles.Diretor && (
+          {user?.role === Roles.DIRETOR && (
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
               <Button size="icon" className="fixed bottom-6 right-6 h-10 p-4 w-auto rounded-lg   shadow-lg">
@@ -543,7 +543,7 @@ export function Squads() {
                   <td className="py-3 pr-4">{sq.membrosCount ?? 0}</td>
                   <td className="py-3 pr-2 text-right">
                     <div className="inline-flex items-center gap-2">
-                      {user?.role === Roles.Diretor && (
+                      {user?.role === Roles.DIRETOR && (
                         <>
                           <Button
                             size="sm"
@@ -610,7 +610,7 @@ export function Squads() {
                   <td className="py-3 pr-4">{sq.membrosCount ?? 0}</td>
                   <td className="py-3 pr-2 text-right">
                     <div className="inline-flex items-center gap-2">
-                      {user?.role === Roles.Diretor && (
+                      {user?.role === Roles.DIRETOR && (
                         <>
                           <Button
                             size="sm"
@@ -661,7 +661,7 @@ export function Squads() {
                         <span className="truncate">{sq.nome}</span>
                       </ItemTitle>
                       <div className="flex items-center gap-1">
-                        {user?.role === Roles.Diretor && (
+                        {user?.role === Roles.DIRETOR && (
                           <button
                             type="button"
                             className="inline-flex items-center p-0.5 text-muted-foreground opacity-70 hover:opacity-100 hover:text-foreground"
@@ -730,7 +730,7 @@ export function Squads() {
                           <span className="truncate">{sq.nome}</span>
                         </ItemTitle>
                         <div className="flex items-center gap-1">
-                          {user?.role === Roles.Diretor && (
+                          {user?.role === Roles.DIRETOR && (
                             <button
                               type="button"
                               className="inline-flex items-center p-0.5 text-muted-foreground opacity-70 hover:opacity-100 hover:text-foreground"

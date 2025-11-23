@@ -42,8 +42,8 @@ export const dashboardRoutes: DashboardRoute[] = [
   { path: 'equipes', element: <Equipes />, label: 'Equipes', icon: Layers, allowedRoles: [Roles.GESTOR, Roles.DIRETOR], section: 'org' },
   { path: 'colaboradores', element: <Colaboradores />, label: 'Colaboradores', icon: UsersIcon, allowedRoles: [Roles.GESTOR, Roles.DIRETOR], section: 'org' },
   { path: 'avaliacoes', element: <Avaliacoes />, label: 'Avaliações', icon: ClipboardList, allowedRoles: [Roles.GESTOR, Roles.DIRETOR], section: 'org' },
-  { path: 'aprovacao-competencias', element: <AprovacaoCompetencias />, label: 'Aprovação de Competências', icon: CheckCircle, allowedRoles: [Roles.DIRETOR], section: 'org' },
-
+  { path: 'aprovacao-competencias', element: <AprovacaoCompetencias />, label: 'Aprovação de Competências', icon: CheckCircle, allowedRoles: [Roles.DIRETOR], section: 'org' }
+]
 
 export function getRoutesForRole(role: UserRole): DashboardRoute[] {
   return dashboardRoutes.filter((r) => r.allowedRoles.includes(role))
