@@ -37,7 +37,7 @@ export function NewCollaboratorModal({
   const [novoCargo, setNovoCargo] = useState<number | ''>('')
   const [novoSetorFiltro, setNovoSetorFiltro] = useState<number | ''>('')
   const [novoSenha, setNovoSenha] = useState('')
-  const [novoGenero, setNovoGenero] = useState<'Masculino' | 'Feminino' | ''>('')
+  const [novoGenero, setNovoGenero] = useState<'MASCULINO' | 'FEMININO' | ''>('')
   const [novoNascimento, setNovoNascimento] = useState<Date | undefined>(undefined)
   const [saving, setSaving] = useState(false)
   const [newAvatarOpen, setNewAvatarOpen] = useState(false)
@@ -157,8 +157,8 @@ export function NewCollaboratorModal({
                       onChange={(e) => setNovoGenero(e.target.value as any)}
                     >
                       <option value="">Selecione</option>
-                      <option value="Masculino">Masculino</option>
-                      <option value="Feminino">Feminino</option>
+                      <option value="Masculino">MASCULINO</option>
+                      <option value="Feminino">FEMININO</option>
                     </select>
                   </div>
                 </div>
