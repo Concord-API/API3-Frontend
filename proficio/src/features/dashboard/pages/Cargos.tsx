@@ -21,6 +21,14 @@ type ViewMode = 'table' | 'grid'
 export function Cargos() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  
+  const roleValueToEnumName = (role: UserRole): string => {
+    if (role === Roles.COLABORADOR) return 'COLABORADOR'
+    if (role === Roles.GESTOR) return 'GESTOR'
+    if (role === Roles.DIRETOR) return 'DIRETOR'
+    return 'COLABORADOR'
+  }
+  
   const [mode, setMode] = useState<ViewMode>('grid')
   const [q, setQ] = useState('')
   const [items, setItems] = useState<Cargo[]>([])
@@ -186,7 +194,7 @@ export function Cargos() {
                       if (!nome || novoSetor === 'none') return
                       setSaving(true)
                       try {
-                        const payload: any = { nome, descricao: (novaDesc || null), role: novoRole, setorId: (novoSetor as number) }
+                        const payload: any = { nome, descricao: (novaDesc || null), role: roleValueToEnumName(novoRole), setorId: (novoSetor as number) }
                         const { data } = await api.post<any>('/cargos', payload)
                         const vm: any = data
                         const created: Cargo = {
@@ -578,7 +586,7 @@ export function Cargos() {
                   if (!editTarget) return
                   setSaving(true)
                   try {
-                    const payload: any = { nome: editNome.trim(), descricao: editDesc || null, role: editRole, setorId: (editSetor as number) }
+                    const payload: any = { nome: editNome.trim(), descricao: editDesc || null, role: roleValueToEnumName(editRole), setorId: (editSetor as number) }
                     const { data } = await api.post('/cargos', payload)
                     const vm: any = data
                     const atualizado: Cargo = {
@@ -608,7 +616,7 @@ export function Cargos() {
                 const nome = (editNome ?? '').trim()
                 setSaving(true)
                 try {
-                  const payload: any = { nome, descricao: editDesc || null, role: editRole, setorId: (editSetor as number) }
+                  const payload: any = { nome, descricao: editDesc || null, role: roleValueToEnumName(editRole), setorId: (editSetor as number) }
                   const { data } = await api.put<any>(`/cargos/${encodeURIComponent(editTarget.id_cargo)}`, payload)
                   const vm: any = data
                   const atualizado: Cargo = {

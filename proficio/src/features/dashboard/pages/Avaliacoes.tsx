@@ -18,6 +18,7 @@ type Avaliacao = {
   id: number
   id_colaborador: number
   colaborador?: Colaborador
+  avaliadoNome?: string | null
   created_at?: string | null
   updated_at?: string | null
   resumo?: string | null
@@ -82,11 +83,12 @@ export function Avaliacoes() {
       const [_, c, s, e, comps] = await Promise.all([
         (async () => {
           try {
-            const res = await api.get<any[]>('/avaliacoes/minhas')
+            const res = await api.get<any[]>('/avaliacoes/feitas')
             const normalized: Avaliacao[] = (res.data || []).map((it: any) => ({
               id: Number(it?.id ?? 0),
               id_colaborador: Number(it?.avaliadoId ?? it?.id_colaborador ?? it?.colaboradorId ?? 0),
               colaborador: it?.colaborador ?? undefined,
+              avaliadoNome: it?.avaliadoNome ?? null,
               created_at: it?.created_at ?? it?.criadoEm ?? null,
               updated_at: it?.updated_at ?? it?.atualizadoEm ?? null,
               resumo: it?.resumo ?? null,
@@ -316,7 +318,7 @@ export function Avaliacoes() {
                       <AvatarFallback className="text-xs font-semibold">{initial}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <div className="font-medium truncate">{c ? `${c.nome} ${c.sobrenome}` : '—'}</div>
+                      <div className="font-medium truncate">{c ? `${c.nome} ${c.sobrenome}` : (ev.avaliadoNome ?? '—')}</div>
                       <div className="text-xs text-muted-foreground truncate">{(c as any)?.email ?? '—'}</div>
                     </div>
                   </div>

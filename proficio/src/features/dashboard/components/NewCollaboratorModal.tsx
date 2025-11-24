@@ -157,8 +157,8 @@ export function NewCollaboratorModal({
                       onChange={(e) => setNovoGenero(e.target.value as any)}
                     >
                       <option value="">Selecione</option>
-                      <option value="Masculino">MASCULINO</option>
-                      <option value="Feminino">FEMININO</option>
+                      <option value="MASCULINO">Masculino</option>
+                      <option value="MASCULINO">Feminino</option>
                     </select>
                   </div>
                 </div>
