@@ -636,7 +636,11 @@ export function Colaboradores() {
                       >
                         Ver perfil
                       </Button>
-                      {(user?.role === Roles.DIRETOR || user?.role === Roles.GESTOR) && (
+                      {(user?.role === Roles.DIRETOR || user?.role === Roles.GESTOR) && (() => {
+                        const colabId = String((c as any).id_colaborador ?? (c as any).id)
+                        const currentUserId = String(user?.id ?? '')
+                        return colabId !== currentUserId
+                      })() && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -690,7 +694,11 @@ export function Colaboradores() {
                       )}
                     </div>
                   </ItemTitle>
-                  {(user?.role === Roles.DIRETOR || user?.role === Roles.GESTOR) && (
+                  {(user?.role === Roles.DIRETOR || user?.role === Roles.GESTOR) && (() => {
+                    const colabId = String((c as any).id_colaborador ?? (c as any).id)
+                    const currentUserId = String(user?.id ?? '')
+                    return colabId !== currentUserId
+                  })() && (
                     <div className="ml-auto">
                       <Button
                         size="sm"

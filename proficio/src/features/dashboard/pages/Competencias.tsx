@@ -9,16 +9,16 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { api } from '@/shared/lib/api'
 import type { ColaboradorCompetencia, Competencia } from '@/shared/types'
-import { Check, Trash, ChevronDown, Plus, AlertTriangle } from 'lucide-react'
+import { Check, Trash, ChevronDown, Plus, AlertTriangle, BadgeCheck, Eye } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip'
 import { toast } from 'sonner'
 import { ButtonGroup } from '@/shared/components/ui/button-group'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/shared/components/ui/command'
 import { Skeleton } from '@/shared/components/ui/skeleton'
+import { CertificateViewerModal } from '@/features/dashboard/components/CertificateViewerModal'
 
 type UserCompetenciaItem = ColaboradorCompetencia & { competencia: Competencia }
 
-// Normaliza valores possíveis de tipo ("HARD"|"SOFT"|0|1) para 0|1
 const normalizeTipo = (t: unknown): 0 | 1 => {
   if (t === 0 || t === 1) return t as 0 | 1
   const v = String(t).toUpperCase()
@@ -54,6 +54,12 @@ export function Competencias() {
   const comboRef = useRef<HTMLDivElement | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
+  const [newCertDataUrl, setNewCertDataUrl] = useState<string | null>(null)
+
+  const [editCertDataUrl, setEditCertDataUrl] = useState<string | null>(null)
+  const [viewerOpen, setViewerOpen] = useState(false)
+  const [viewerItemId, setViewerItemId] = useState<number | null>(null)
+  const [viewerItemName, setViewerItemName] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     function onDocMouseDown(e: MouseEvent) {
@@ -143,17 +149,21 @@ export function Competencias() {
     try {
       let comp = selected
       if (!comp) {
-        // cria se não existe
         const create = await api.post('/competencias', { nome: query.trim(), tipo: newType })
         const created = create.data as any
         comp = { id_competencia: created.id, nome: created.nome, tipo: normalizeTipo(created.tipo) } as Competencia
       }
       await api.patch(`/colaboradores/${encodeURIComponent(user.id)}/competencias`, {
-        items: [{ competenciaId: comp!.id_competencia, proeficiencia: newLevel }],
+        items: [{
+          competenciaId: comp!.id_competencia,
+          proeficiencia: newLevel,
+          certificado: newCertDataUrl ?? undefined,
+        }],
       })
       setQuery('')
       setSelected(null)
       setNewLevel(3)
+      setNewCertDataUrl(null)
       await loadData()
       toast.success('Competência adicionada')
     } finally {
@@ -362,6 +372,28 @@ export function Competencias() {
                     </ButtonGroup>
                     <div className="text-xs text-muted-foreground">{NIVEL_LABEL[newLevel]}</div>
                   </div>
+                  <div className="space-y-2">
+                    <Label>Certificado (opcional)</Label>
+                    <Input
+                      type="file"
+                      accept="application/pdf,image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) {
+                          setNewCertDataUrl(null)
+                          return
+                        }
+                        const reader = new FileReader()
+                        reader.onload = () => {
+                          setNewCertDataUrl(typeof reader.result === 'string' ? reader.result : null)
+                        }
+                        reader.readAsDataURL(file)
+                      }}
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Arquivos em PDF ou imagem para comprovar sua proeficiência.
+                    </div>
+                  </div>
                 </div>
                 <SheetFooter className="mt-6">
                   <SheetClose asChild>
@@ -401,6 +433,7 @@ export function Competencias() {
                   <th className="py-2 pr-4 font-medium">Competência</th>
                   <th className="py-2 pr-4 font-medium">Tipo</th>
                   <th className="py-2 pr-4 font-medium">Proeficiência</th>
+                  <th className="py-2 pr-4 font-medium">Certificado</th>
                   <th className="py-2 pr-2 font-medium text-right">Ações</th>
                 </tr>
               </thead>
@@ -453,17 +486,46 @@ export function Competencias() {
                           <div className="h-2 w-40 rounded-full bg-secondary">
                             <div className={`h-2 rounded-full ${color}`} style={{ width: `${pct}%` }} />
                           </div>
-                          <div className="whitespace-nowrap text-xs text-muted-foreground">{NIVEL_LABEL[uc.proeficiencia]} ({uc.proeficiencia}/5)</div>
+                          <div className="whitespace-nowrap text-xs text-muted-foreground">
+                            {NIVEL_LABEL[uc.proeficiencia]} ({uc.proeficiencia}/5)
+                          </div>
                         </div>
                       </td>
+                      <td className="py-3 pr-4">
+                        <span className="inline-flex items-center gap-1 text-xs font-medium">
+                          {uc.certificado && <BadgeCheck className="size-3.5 text-emerald-500" />}
+                          <span>{uc.certificado ? 'Tem certificado' : 'Sem certificado'}</span>
+                        </span>
+                      </td>
                       <td className="py-3 pr-2 text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => { setEditItem(uc); setEditLevel(uc.proeficiencia); setEditOpen(true) }}
-                        >
-                          Editar
-                        </Button>
+                        <div className="inline-flex items-center gap-2">
+                          {uc.certificado && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setViewerItemId(uc.id)
+                                setViewerItemName(uc.competencia?.nome)
+                                setViewerOpen(true)
+                              }}
+                            >
+                              <Eye className="size-3.5 mr-1" />
+                              Ver certificado
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditItem(uc)
+                              setEditLevel(uc.proeficiencia)
+                              setEditCertDataUrl(null)
+                              setEditOpen(true)
+                            }}
+                          >
+                            Editar
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -478,7 +540,7 @@ export function Competencias() {
         <DialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Editar competência</DialogTitle>
-            <DialogDescription>Atualize a proeficiência desta competência</DialogDescription>
+            <DialogDescription>Atualize a proeficiência e, se quiser, anexe um certificado</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1">
@@ -496,6 +558,33 @@ export function Competencias() {
                 onChange={(e) => setEditLevel(Number(e.target.value))}
                 className="w-full accent-primary"
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Certificado</Label>
+              <div className="text-xs text-muted-foreground mb-1">
+                {editItem?.certificado
+                  ? 'Já existe um certificado anexado para esta competência.'
+                  : 'Nenhum certificado anexado ainda.'}
+              </div>
+              <Input
+                type="file"
+                accept="application/pdf,image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) {
+                    setEditCertDataUrl(null)
+                    return
+                  }
+                  const reader = new FileReader()
+                  reader.onload = () => {
+                    setEditCertDataUrl(typeof reader.result === 'string' ? reader.result : null)
+                  }
+                  reader.readAsDataURL(file)
+                }}
+              />
+              <div className="text-xs text-muted-foreground">
+                Se você escolher um novo arquivo, o certificado será atualizado.
+              </div>
             </div>
           </div>
           <DialogFooter className="sm:justify-between">
@@ -524,7 +613,13 @@ export function Competencias() {
                 try {
                   const compId = (editItem.competencia?.id_competencia ?? editItem.id_competencia ?? editItem.id)
                   await api.patch(`/colaboradores/${encodeURIComponent(user.id)}/competencias`, {
-                    items: [{ competenciaId: compId, proeficiencia: editLevel }],
+                    items: [{
+                      competenciaId: compId,
+                      proeficiencia: editLevel,
+                      // Só envia certificado se o usuário selecionou um novo arquivo;
+                      // se ficar null, backend mantém o existente.
+                      certificado: editCertDataUrl ?? undefined,
+                    }],
                   })
                   await loadData()
                   toast.success('Proeficiência atualizada')
@@ -540,6 +635,14 @@ export function Competencias() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CertificateViewerModal
+        open={viewerOpen}
+        onOpenChange={setViewerOpen}
+        colaboradorId={user?.id ? Number(user.id) : null}
+        competenciaItemId={viewerItemId}
+        competenciaNome={viewerItemName}
+      />
     </div>
   )
 }

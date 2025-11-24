@@ -108,6 +108,7 @@ export function DashboardLayout() {
             const routes = getRoutesForRole(role)
             const general = routes.filter(r => (r.section ?? 'general') === 'general')
             const org = routes.filter(r => r.section === 'org')
+            const isCollaborator = role === Roles.COLABORADOR
 
             function renderGrouped(list: typeof routes, groups: { label: string, keys: string[] }[]) {
               return (
@@ -157,7 +158,9 @@ export function DashboardLayout() {
             return (
               <>
                 <SidebarGroup>
-                  <SidebarGroupLabel>Geral</SidebarGroupLabel>
+                  {!isCollaborator && (
+                    <SidebarGroupLabel>Geral</SidebarGroupLabel>
+                  )}
                   <SidebarGroupContent>
                     {renderGrouped(general, generalGroups)}
                   </SidebarGroupContent>

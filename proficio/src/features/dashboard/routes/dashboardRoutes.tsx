@@ -1,5 +1,4 @@
 import { Roles, type UserRole } from '@/shared/constants/roles'
-import { HomeColaborador } from '@/features/dashboard/pages/HomeColaborador'
 import { HomeGestor } from '@/features/dashboard/pages/HomeGestor'
 import { HomeDiretor } from '@/features/dashboard/pages/HomeDiretor'
 import { useAuth } from '@/features/auth/hooks/useAuth'
@@ -28,11 +27,18 @@ function HomeByRole() {
   const { user } = useAuth()
   if (user?.role === Roles.GESTOR) return <HomeGestor />
   if (user?.role === Roles.DIRETOR) return <HomeDiretor />
-  return <HomeColaborador />
+  return <Perfil />
 }
 
 export const dashboardRoutes: DashboardRoute[] = [
-  { path: '', element: <HomeByRole />, label: 'Home', icon: Home, allowedRoles: [Roles.COLABORADOR, Roles.GESTOR, Roles.DIRETOR], section: 'general' },
+  {
+    path: '',
+    element: <HomeByRole />,
+    label: 'Home',
+    icon: Home,
+    allowedRoles: [Roles.GESTOR, Roles.DIRETOR],
+    section: 'general'
+  },
   { path: 'perfil', element: <Perfil />, label: 'Perfil', icon: User, allowedRoles: [Roles.COLABORADOR, Roles.GESTOR, Roles.DIRETOR], section: 'general' },
   { path: 'competencias', element: <Competencias />, label: 'Minhas Competências', icon: Sparkles, allowedRoles: [Roles.COLABORADOR, Roles.GESTOR, Roles.DIRETOR], section: 'general' },
   { path: 'minhas-avaliacoes', element: <MinhasAvaliacoes />, label: 'Minhas Avaliações', icon: ClipboardList, allowedRoles: [Roles.COLABORADOR, Roles.GESTOR, Roles.DIRETOR], section: 'general' },

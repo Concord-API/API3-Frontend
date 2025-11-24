@@ -75,6 +75,7 @@ export interface ColaboradorCompetencia {
     id_competencia: number;
     proeficiencia: number;
     ordem?: number | null;
+    certificado?: boolean;
     colaborador?: Colaborador;
     competencia?: Competencia;
 }
