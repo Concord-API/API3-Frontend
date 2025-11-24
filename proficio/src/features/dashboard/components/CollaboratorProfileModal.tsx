@@ -6,6 +6,8 @@ import { ScrollArea } from '@/shared/components/ui/scroll-area'
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '@/shared/lib/api'
 import type { Colaborador } from '@/shared/types'
+import { BadgeCheck } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip'
 
 type Gender = 'Male' | 'Female'
 
@@ -31,10 +33,10 @@ function inferGenderFromName(name: string | undefined): Gender {
   const n = (name ?? '').trim().toLowerCase()
   if (!n) return 'Male'
   const FemaleNames = new Set([
-    'tainara','mariana','fernanda','patrícia','patricia'
+    'tainara', 'mariana', 'fernanda', 'patrícia', 'patricia'
   ])
   const MaleNames = new Set([
-    'adler','richard','lucas','bruno'
+    'adler', 'richard', 'lucas', 'bruno'
   ])
   if (FemaleNames.has(n)) return 'Female'
   if (MaleNames.has(n)) return 'Male'
@@ -210,9 +212,46 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
                           ? 'bg-red-500 text-white border-red-600'
                           : 'bg-purple-600 text-white border-purple-700'
                   const key = (cc as any)?.id ?? `${(cc as any)?.competencia?.id_competencia ?? (cc as any)?.competencia?.id ?? 'c'}_${cc.ordem ?? '0'}`
+                  const hasCert = Boolean((cc as any).certificado)
+                  const levelBadge = (
+                    <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-black/20 px-2 py-[3px] text-[10px] font-semibold">
+                      <span>{level}/5</span>
+                      {hasCert && <BadgeCheck className="size-4 text-emerald-500" />}
+                    </span>
+                  )
                   return (
-                    <span key={key} className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
-                      {cc.competencia?.nome}
+                    <span key={key} className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
+                      <span>{cc.competencia?.nome}</span>
+                      {level > 0 && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              {levelBadge}
+                            </TooltipTrigger>
+                            <TooltipContent
+                              className="bg-background border border-primary/40 shadow-lg text-xs p-3 rounded-lg"
+                              sideOffset={5}
+                              side="top"
+                              hideArrow
+                            >
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-muted-foreground">Proeficiência:</span>
+                                  <span className="inline-flex items-center rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                                    {level}/5
+                                  </span>
+                                </div>
+                                {hasCert && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-muted-foreground">Certificado validado:</span>
+                                    <BadgeCheck className="size-4 text-emerald-500" />
+                                  </div>
+                                )}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                     </span>
                   )
                 })}
@@ -240,7 +279,10 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
                     {allSkills.length > 0 ? (
                       allSkills.map((cc) => (
                         <div key={cc.id} className="grid grid-cols-[1fr_auto] gap-x-2 px-3 py-2 border-t">
-                          <div className="text-sm">{cc.competencia?.nome}</div>
+                          <div className="text-sm flex items-center gap-1">
+                            <span>{cc.competencia?.nome}</span>
+                            {Boolean((cc as any).certificado) && <BadgeCheck className="size-3.5 text-emerald-500" />}
+                          </div>
                           <div className="text-sm justify-self-end">{cc.proeficiencia}/5</div>
                         </div>
                       ))
@@ -308,7 +350,7 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
                     {teamMembers
                       .filter((m) => String(((m as any).cargo?.role ?? (m as any).role) ?? '') === 'Colaborador')
                       .map((m, index) => (
-                    <div key={(m as any).id_colaborador ?? (m as any).id ?? index} className="rounded-lg border p-2 text-left hover:bg-accent/40 transition-colors cursor-pointer" onClick={() => setCurrentId(((m as any).id_colaborador ?? (m as any).id) as number)} role="button" tabIndex={0}>
+                        <div key={(m as any).id_colaborador ?? (m as any).id ?? index} className="rounded-lg border p-2 text-left hover:bg-accent/40 transition-colors cursor-pointer" onClick={() => setCurrentId(((m as any).id_colaborador ?? (m as any).id) as number)} role="button" tabIndex={0}>
                           <div className="flex items-center gap-2">
                             <Avatar className="size-8">
                               <AvatarImage src={(m as any).avatar ?? undefined} alt="" />
@@ -324,13 +366,13 @@ export function CollaboratorProfileModal({ idColaborador, onClose }: Props) {
                                 )}
                               </AvatarFallback>
                             </Avatar>
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium truncate">{m.nome} {m.sobrenome}</div>
-                            <div className="text-[11px] text-muted-foreground truncate">{((m as any).cargoNome ?? m.cargo?.nome_cargo) ?? '—'}</div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium truncate">{m.nome} {m.sobrenome}</div>
+                              <div className="text-[11px] text-muted-foreground truncate">{((m as any).cargoNome ?? m.cargo?.nome_cargo) ?? '—'}</div>
                             </div>
                           </div>
                         </div>
-                    ))}
+                      ))}
                   </div>
                 </div>
               </TabsContent>

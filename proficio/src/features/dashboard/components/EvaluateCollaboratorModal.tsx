@@ -20,10 +20,11 @@ type Props = {
   setores: Setor[]
   equipes: Equipe[]
   onSave?: () => void
+  isEditMode?: boolean
   existingEvaluation?: {
     id: number
-    competenciaId: number
-    competenciaNome: string
+    competenciaId: number | null
+    competenciaNome: string | null
     resumo: string | null
     publico: boolean
     nota?: number
@@ -41,10 +42,12 @@ export function EvaluateCollaboratorModal({
   setores,
   equipes,
   onSave,
+  isEditMode = false,
   existingEvaluation,
 }: Props) {
   const { user } = useAuth()
-  const [comments, setComments] = useState<string>('')
+  const [generalRating, setGeneralRating] = useState<number | ''>('')
+  const [generalReview, setGeneralReview] = useState<string>('')
   const [isPublic, setIsPublic] = useState<boolean>(true)
   const [selectedCompetencia, setSelectedCompetencia] = useState<number | ''>('')
   const [competenceEvaluations, setCompetenceEvaluations] = useState<Record<number, { rating: number | ''; review: string }>>({})
@@ -57,17 +60,22 @@ export function EvaluateCollaboratorModal({
 
   useEffect(() => {
     if (existingEvaluation && open) {
-      setComments(existingEvaluation.resumo || '')
+      if (existingEvaluation.competenciaId == null) {
+        setGeneralRating(existingEvaluation.nota ?? '')
+        setGeneralReview(existingEvaluation.resumo || '')
+      } else {
+        setSelectedCompetencia(existingEvaluation.competenciaId)
+        setCompetenceEvaluations({
+          [existingEvaluation.competenciaId]: {
+            rating: existingEvaluation.nota ?? '',
+            review: existingEvaluation.resumo || ''
+          }
+        })
+      }
       setIsPublic(existingEvaluation.publico)
-      setSelectedCompetencia(existingEvaluation.competenciaId)
-      setCompetenceEvaluations({
-        [existingEvaluation.competenciaId]: {
-          rating: existingEvaluation.nota ?? '',
-          review: existingEvaluation.resumo || ''
-        }
-      })
     } else {
-      setComments('')
+      setGeneralRating('')
+      setGeneralReview('')
       setIsPublic(true)
       setSelectedCompetencia('')
       setCompetenceEvaluations({})
@@ -118,37 +126,48 @@ export function EvaluateCollaboratorModal({
             })()}
           </ModalTitle>
           <ModalDescription className="sr-only">
-            Avalie as competências e deixe um resumo sobre o desempenho do colaborador.
+            Avalie o colaborador de forma geral ou por competências específicas.
           </ModalDescription>
         </ModalHeader>
         <ScrollArea className="max-h-[65vh] min-h-[380px]">
           <div className="px-6 pb-2">
-            <Tabs defaultValue="resumo">
+            <Tabs defaultValue="geral">
               <TabsList className="mb-3">
-                <TabsTrigger value="resumo">Resumo</TabsTrigger>
-                <TabsTrigger value="competencias">Competências</TabsTrigger>
+                <TabsTrigger value="geral">Avaliação Geral</TabsTrigger>
+                <TabsTrigger value="competencias">Por Competência</TabsTrigger>
               </TabsList>
-              <TabsContent value="resumo">
+              <TabsContent value="geral">
                 <div className="grid gap-3">
+                  <div className="grid gap-1">
+                    <label className="text-sm text-muted-foreground">Nota geral (1 a 5)</label>
+                    <select
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      value={generalRating === '' ? '' : String(generalRating)}
+                      onChange={(e) => setGeneralRating(e.target.value ? Number(e.target.value) : '')}
+                    >
+                      <option value="">—</option>
+                      {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </div>
                   <div className="grid gap-1">
                     <label className="text-sm text-muted-foreground">Comentários e evidências</label>
                     <textarea
                       rows={6}
                       className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                      value={comments}
-                      onChange={(e) => setComments(e.target.value)}
+                      value={generalReview}
+                      onChange={(e) => setGeneralReview(e.target.value)}
                       placeholder="Ex.: Resultados, comportamentos observados, metas batidas..."
                     />
                   </div>
                   <div className="flex items-center gap-2">
                     <input
-                      id="flag-publica"
+                      id="flag-publica-geral"
                       type="checkbox"
                       className="size-4 accent-primary"
                       checked={isPublic}
                       onChange={(e) => setIsPublic(e.target.checked)}
                     />
-                    <label htmlFor="flag-publica" className="text-sm">Tornar avaliação pública ao avaliado</label>
+                    <label htmlFor="flag-publica-geral" className="text-sm">Tornar avaliação pública ao avaliado</label>
                   </div>
                 </div>
               </TabsContent>
@@ -223,6 +242,16 @@ export function EvaluateCollaboratorModal({
                             </div>
                           </>
                         )}
+                        <div className="flex items-center gap-2">
+                          <input
+                            id="flag-publica-comp"
+                            type="checkbox"
+                            className="size-4 accent-primary"
+                            checked={isPublic}
+                            onChange={(e) => setIsPublic(e.target.checked)}
+                          />
+                          <label htmlFor="flag-publica-comp" className="text-sm">Tornar avaliação pública ao avaliado</label>
+                        </div>
                       </div>
                     )
                   })()}
@@ -232,29 +261,31 @@ export function EvaluateCollaboratorModal({
           </div>
         </ScrollArea>
         <ModalFooter>
-          <div className="flex w-full items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (!evaluationId) return
-                  const idx = filteredIds.indexOf(evaluationId)
-                  if (idx > 0) setEvaluationId(filteredIds[idx - 1])
-                }}
-              >
-                Anterior
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (!evaluationId) return
-                  const idx = filteredIds.indexOf(evaluationId)
-                  if (idx >= 0 && idx < filteredIds.length - 1) setEvaluationId(filteredIds[idx + 1])
-                }}
-              >
-                Próximo
-              </Button>
-            </div>
+          <div className={`flex w-full items-center gap-2 ${isEditMode ? 'justify-end' : 'justify-between'}`}>
+            {!isEditMode && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (!evaluationId) return
+                    const idx = filteredIds.indexOf(evaluationId)
+                    if (idx > 0) setEvaluationId(filteredIds[idx - 1])
+                  }}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (!evaluationId) return
+                    const idx = filteredIds.indexOf(evaluationId)
+                    if (idx >= 0 && idx < filteredIds.length - 1) setEvaluationId(filteredIds[idx + 1])
+                  }}
+                >
+                  Próximo
+                </Button>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
               <Button
@@ -266,45 +297,68 @@ export function EvaluateCollaboratorModal({
 
                   setIsSaving(true)
                   try {
+                    const promises: Promise<any>[] = []
+
+                    if (generalRating !== '' || generalReview.trim()) {
+                      const isUpdate = existingEvaluation && existingEvaluation.competenciaId == null
+                      if (isUpdate) {
+                        promises.push(api.put(`/avaliacoes/${existingEvaluation.id}`, {
+                          resumo: generalReview.trim() || null,
+                          competenciaId: null,
+                          status: true,
+                          publico: isPublic,
+                          nota: generalRating === '' ? undefined : Number(generalRating),
+                        }))
+                      } else {
+                        promises.push(api.post('/avaliacoes', {
+                          avaliadorId: user.id,
+                          avaliadoId: evaluationId,
+                          resumo: generalReview.trim() || null,
+                          competenciaId: null,
+                          status: true,
+                          publico: isPublic,
+                          nota: generalRating === '' ? undefined : Number(generalRating),
+                        }))
+                      }
+                    }
+
                     const competenciasAvaliadas = Object.entries(competenceEvaluations)
                       .filter(([_, v]) => v.rating !== '' || (v.review && v.review.trim()))
 
-                    if (competenciasAvaliadas.length === 0) {
-                      toast.error('Avalie pelo menos uma competência')
-                      setIsSaving(false)
-                      return
-                    }
-
-                    const promises = competenciasAvaliadas.map(async ([competenciaIdStr, val]) => {
+                    competenciasAvaliadas.forEach(([competenciaIdStr, val]) => {
                       const compId = Number(competenciaIdStr)
                       const isUpdate = existingEvaluation && existingEvaluation.competenciaId === compId
 
                       if (isUpdate) {
-                        const payload = {
+                        promises.push(api.put(`/avaliacoes/${existingEvaluation.id}`, {
                           resumo: val.review?.trim() || null,
                           competenciaId: compId,
                           status: true,
-                          publico: isPublic === true,
+                          publico: isPublic,
                           nota: val.rating === '' ? undefined : Number(val.rating),
-                        }
-                        return api.put(`/avaliacoes/${existingEvaluation.id}`, payload)
+                        }))
                       } else {
-                        const payload = {
+                        promises.push(api.post('/avaliacoes', {
                           avaliadorId: user.id,
                           avaliadoId: evaluationId,
                           resumo: val.review?.trim() || null,
                           competenciaId: compId,
                           status: true,
-                          publico: isPublic === true,
+                          publico: isPublic,
                           nota: val.rating === '' ? undefined : Number(val.rating),
-                        }
-                        return api.post('/avaliacoes', payload)
+                        }))
                       }
                     })
 
+                    if (promises.length === 0) {
+                      toast.error('Preencha pelo menos uma avaliação (geral ou por competência)')
+                      setIsSaving(false)
+                      return
+                    }
+
                     await Promise.all(promises)
 
-                    toast.success(`${competenciasAvaliadas.length} avaliação(ões) enviada(s) com sucesso!`)
+                    toast.success(`${promises.length} avaliação(ões) enviada(s) com sucesso!`)
                     onSave?.()
                     onOpenChange(false)
                   } catch (error: any) {
@@ -326,5 +380,3 @@ export function EvaluateCollaboratorModal({
     </Modal>
   )
 }
-
-

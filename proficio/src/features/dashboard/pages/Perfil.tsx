@@ -7,11 +7,12 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { api } from '@/shared/lib/api'
 import type { Colaborador, ColaboradorCompetencia } from '@/shared/types'
-import { SquarePen, GripVertical, X, Camera } from 'lucide-react'
+import { SquarePen, GripVertical, X, Camera, BadgeCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { AvatarEditorModal } from '@/features/dashboard/components/AvatarEditorModal'
 import { CoverEditorModal } from '@/features/dashboard/components/CoverEditorModal'
 import { Skeleton } from '@/shared/components/ui/skeleton'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip'
 
 type Gender = 'Male' | 'Female'
 
@@ -65,7 +66,7 @@ export function Perfil() {
   const [draftSkills, setDraftSkills] = useState<string[]>(skills)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [allCompetencias, setAllCompetencias] = useState<{ id_competencia: number; nome: string }[]>([])
-  const [ownCompetencias, setOwnCompetencias] = useState<{ id_competencia: number; nome: string; proeficiencia: number }[]>([])
+  const [ownCompetencias, setOwnCompetencias] = useState<{ id_competencia: number; nome: string; proeficiencia: number; certificado?: boolean }[]>([])
   // crop state
   const [avatarCropOpen, setAvatarCropOpen] = useState(false)
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null)
@@ -122,8 +123,13 @@ export function Perfil() {
       setSkills(destacadasFull.slice(0, 4).map(i => i.nome))
 
       const own = (data.competencias ?? [])
-        .map((cc) => ({ id_competencia: cc.competencia?.id_competencia as number, nome: cc.competencia?.nome ?? '', proeficiencia: cc.proeficiencia as number }))
-        .filter((c) => Boolean(c.nome) && Number.isFinite(c.id_competencia)) as { id_competencia: number; nome: string; proeficiencia: number }[]
+        .map((cc: any) => ({
+          id_competencia: cc.competencia?.id_competencia as number,
+          nome: cc.competencia?.nome ?? '',
+          proeficiencia: cc.proeficiencia as number,
+          certificado: Boolean(cc?.certificado),
+        }))
+        .filter((c) => Boolean(c.nome) && Number.isFinite(c.id_competencia)) as { id_competencia: number; nome: string; proeficiencia: number; certificado?: boolean }[]
       setOwnCompetencias(own)
       setAllCompetencias(own.map(({ id_competencia, nome }) => ({ id_competencia, nome })))
       setProfileLoading(false)
@@ -136,8 +142,13 @@ export function Perfil() {
       if (!user?.id) return
       const { data } = await api.get<ColaboradorCompetencia[]>(`/colaboradores/${encodeURIComponent(user.id)}/competencias`)
       const own = (Array.isArray(data) ? data : [])
-        .map((cc: any) => ({ id_competencia: cc?.competencia?.id_competencia, nome: cc?.competencia?.nome, proeficiencia: cc?.proeficiencia }))
-        .filter((c) => Boolean(c.nome) && Number.isFinite(c.id_competencia)) as { id_competencia: number; nome: string; proeficiencia: number }[]
+        .map((cc: any) => ({
+          id_competencia: cc?.competencia?.id_competencia ?? cc?.id_competencia,
+          nome: cc?.competencia?.nome ?? cc?.nome,
+          proeficiencia: cc?.proeficiencia,
+          certificado: Boolean(cc?.certificado),
+        }))
+        .filter((c) => Boolean(c.nome) && Number.isFinite(c.id_competencia)) as { id_competencia: number; nome: string; proeficiencia: number; certificado?: boolean }[]
       setOwnCompetencias(own)
       setAllCompetencias(own.map(({ id_competencia, nome }) => ({ id_competencia, nome })))
     }
@@ -413,11 +424,51 @@ export function Perfil() {
                 </div>
               )}
               {skills.map((s) => {
-                const level = ownCompetencias.find((c) => c.nome === s)?.proeficiencia || skillItems.find((i) => i.nome === s)?.level || 0
+                const own = ownCompetencias.find((c) => c.nome === s)
+                const level = own?.proeficiencia || skillItems.find((i) => i.nome === s)?.level || 0
                 const cls = getLevelClass(level)
+                const hasCert = Boolean(own?.certificado)
+
+                const levelBadge = (
+                  <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-black/20 px-2 py-[3px] text-[10px] font-semibold">
+                    <span>{level}/5</span>
+                    {hasCert && <BadgeCheck className="size-4 text-emerald-500" />}
+                  </span>
+                )
+
                 return (
-                  <span key={s} className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
-                    {s}
+                  <span key={s} className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
+                    <span>{s}</span>
+                    {level > 0 && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            {levelBadge}
+                          </TooltipTrigger>
+                          <TooltipContent 
+                            className="bg-background border border-primary/40 shadow-lg text-xs p-3 rounded-lg"
+                            sideOffset={5}
+                            side="top"
+                            hideArrow
+                          >
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground">Proeficiência:</span>
+                                <span className="inline-flex items-center rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                                  {level}/5
+                                </span>
+                              </div>
+                              {hasCert && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-muted-foreground">Certificado validado:</span>
+                                  <BadgeCheck className="size-4 text-emerald-500" />
+                                </div>
+                              )}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                   </span>
                 )
               })}
