@@ -174,8 +174,9 @@ export function EvaluateCollaboratorModal({
               <TabsContent value="competencias">
                 <div className="grid gap-3">
                   {(() => {
-                    const list = evaluationId ? (competenciasByColab[evaluationId] ?? []) : []
-                    if (!list.length) return <div className="text-sm text-muted-foreground">Sem competências cadastradas</div>
+                    const allList = evaluationId ? (competenciasByColab[evaluationId] ?? []) : []
+                    const list = allList.filter(cc => cc.competencia?.aprovada !== false)
+                    if (!list.length) return <div className="text-sm text-muted-foreground">Sem competências aprovadas cadastradas</div>
                     const currentEval = selectedCompetencia === '' ? undefined : competenceEvaluations[selectedCompetencia]
                     const currentRating = currentEval?.rating ?? ''
                     const currentReview = currentEval?.review ?? ''

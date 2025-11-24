@@ -86,11 +86,14 @@ export function MinhasAvaliacoes() {
       ])
 
       setItems(c.data)
-      const mappedCompetencias: Competencia[] = (comps.data || []).map((vm: any) => ({
-        id_competencia: vm.id ?? vm.id_competencia,
-        nome: vm.nome ?? '',
-        tipo: vm.tipo ?? 'Técnica',
-      }))
+      const mappedCompetencias: Competencia[] = (comps.data || [])
+        .filter((vm: any) => vm.aprovada !== false)
+        .map((vm: any) => ({
+          id_competencia: vm.id ?? vm.id_competencia,
+          nome: vm.nome ?? '',
+          tipo: vm.tipo ?? 'Técnica',
+          aprovada: vm.aprovada !== false,
+        }))
       setCompetencias(mappedCompetencias)
     } finally {
       setLoading(false)

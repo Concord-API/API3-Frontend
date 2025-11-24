@@ -87,6 +87,7 @@ export function HomeDiretor() {
         id_competencia: Number(x?.id_competencia ?? x?.id ?? x?.idCompetencia ?? 0),
         nome: String(x?.nome ?? x?.name ?? ''),
         tipo: Number(x?.tipo ?? 0) as 0 | 1,
+        aprovada: x?.aprovada !== false,
       }))
 
       setSetores(normSetores)
@@ -148,7 +149,7 @@ export function HomeDiretor() {
     loadCompetenciasByColab()
   }, [colaboradores, competencias])
   const optionsCompetencias = useMemo(() => (
-    [{ id: 'all' as const, nome: 'Todas' }, ...competencias.map(c => ({ id: c.id_competencia, nome: c.nome }))]
+    [{ id: 'all' as const, nome: 'Todas' }, ...competencias.filter(c => c.aprovada !== false).map(c => ({ id: c.id_competencia, nome: c.nome }))]
   ), [competencias])
 
   function isCompetenciaSelected(id: number | 'all') {

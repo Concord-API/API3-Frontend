@@ -75,8 +75,10 @@ export function Competencias() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return allCompetencias
-    return allCompetencias.filter((c) => c.nome.toLowerCase().includes(q))
+    // Filtrar apenas competências aprovadas (aprovada !== false)
+    const aprovadas = allCompetencias.filter((c) => c.aprovada !== false)
+    if (!q) return aprovadas
+    return aprovadas.filter((c) => c.nome.toLowerCase().includes(q))
   }, [allCompetencias, query])
 
   const stats = useMemo(() => {
