@@ -7,11 +7,12 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { api } from '@/shared/lib/api'
 import type { Colaborador, ColaboradorCompetencia } from '@/shared/types'
-import { SquarePen, GripVertical, X, Camera } from 'lucide-react'
+import { SquarePen, GripVertical, X, Camera, BadgeCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { AvatarEditorModal } from '@/features/dashboard/components/AvatarEditorModal'
 import { CoverEditorModal } from '@/features/dashboard/components/CoverEditorModal'
 import { Skeleton } from '@/shared/components/ui/skeleton'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip'
 
 type Gender = 'Male' | 'Female'
 
@@ -37,10 +38,10 @@ function inferGenderFromName(name: string | undefined): Gender {
   const n = (name ?? '').trim().toLowerCase()
   if (!n) return 'Male'
   const FemaleNames = new Set([
-    'tainara','mariana','fernanda','patrícia','patricia'
+    'tainara', 'mariana', 'fernanda', 'patrícia', 'patricia'
   ])
   const MaleNames = new Set([
-    'adler','richard','lucas','bruno'
+    'adler', 'richard', 'lucas', 'bruno'
   ])
   if (FemaleNames.has(n)) return 'Female'
   if (MaleNames.has(n)) return 'Male'
@@ -65,7 +66,7 @@ export function Perfil() {
   const [draftSkills, setDraftSkills] = useState<string[]>(skills)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [allCompetencias, setAllCompetencias] = useState<{ id_competencia: number; nome: string }[]>([])
-  const [ownCompetencias, setOwnCompetencias] = useState<{ id_competencia: number; nome: string; proeficiencia: number }[]>([])
+  const [ownCompetencias, setOwnCompetencias] = useState<{ id_competencia: number; nome: string; proeficiencia: number; certificado?: boolean }[]>([])
   // crop state
   const [avatarCropOpen, setAvatarCropOpen] = useState(false)
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null)
@@ -105,7 +106,7 @@ export function Perfil() {
         setProfileCover(s ? (s.startsWith('data:') ? s : `data:image/png;base64,${s}`) : undefined)
       }
 
-      
+
       if ((data as any).atualizado_em) {
         setLastUpdated(new Date((data as any).atualizado_em))
       }
@@ -122,8 +123,13 @@ export function Perfil() {
       setSkills(destacadasFull.slice(0, 4).map(i => i.nome))
 
       const own = (data.competencias ?? [])
-        .map((cc) => ({ id_competencia: cc.competencia?.id_competencia as number, nome: cc.competencia?.nome ?? '', proeficiencia: cc.proeficiencia as number }))
-        .filter((c) => Boolean(c.nome) && Number.isFinite(c.id_competencia)) as { id_competencia: number; nome: string; proeficiencia: number }[]
+        .map((cc: any) => ({
+          id_competencia: cc.competencia?.id_competencia as number,
+          nome: cc.competencia?.nome ?? '',
+          proeficiencia: cc.proeficiencia as number,
+          certificado: Boolean(cc?.certificado),
+        }))
+        .filter((c) => Boolean(c.nome) && Number.isFinite(c.id_competencia)) as { id_competencia: number; nome: string; proeficiencia: number; certificado?: boolean }[]
       setOwnCompetencias(own)
       setAllCompetencias(own.map(({ id_competencia, nome }) => ({ id_competencia, nome })))
       setProfileLoading(false)
@@ -136,8 +142,13 @@ export function Perfil() {
       if (!user?.id) return
       const { data } = await api.get<ColaboradorCompetencia[]>(`/colaboradores/${encodeURIComponent(user.id)}/competencias`)
       const own = (Array.isArray(data) ? data : [])
-        .map((cc: any) => ({ id_competencia: cc?.competencia?.id_competencia, nome: cc?.competencia?.nome, proeficiencia: cc?.proeficiencia }))
-        .filter((c) => Boolean(c.nome) && Number.isFinite(c.id_competencia)) as { id_competencia: number; nome: string; proeficiencia: number }[]
+        .map((cc: any) => ({
+          id_competencia: cc?.competencia?.id_competencia ?? cc?.id_competencia,
+          nome: cc?.competencia?.nome ?? cc?.nome,
+          proeficiencia: cc?.proeficiencia,
+          certificado: Boolean(cc?.certificado),
+        }))
+        .filter((c) => Boolean(c.nome) && Number.isFinite(c.id_competencia)) as { id_competencia: number; nome: string; proeficiencia: number; certificado?: boolean }[]
       setOwnCompetencias(own)
       setAllCompetencias(own.map(({ id_competencia, nome }) => ({ id_competencia, nome })))
     }
@@ -357,7 +368,7 @@ export function Perfil() {
             setPhotoPreview(base64)
             await api.patch(`/colaboradores/${user!.id}/perfil`, { avatar: base64 })
             setProfilePhoto(base64)
-            try { window.dispatchEvent(new CustomEvent('profile-avatar-updated', { detail: base64 })) } catch {}
+            try { window.dispatchEvent(new CustomEvent('profile-avatar-updated', { detail: base64 })) } catch { }
             setLastUpdated(new Date())
             toast.success('Foto de perfil atualizada')
             setAvatarCropOpen(false)
@@ -413,11 +424,51 @@ export function Perfil() {
                 </div>
               )}
               {skills.map((s) => {
-                const level = ownCompetencias.find((c) => c.nome === s)?.proeficiencia || skillItems.find((i) => i.nome === s)?.level || 0
+                const own = ownCompetencias.find((c) => c.nome === s)
+                const level = own?.proeficiencia || skillItems.find((i) => i.nome === s)?.level || 0
                 const cls = getLevelClass(level)
+                const hasCert = Boolean(own?.certificado)
+
+                const levelBadge = (
+                  <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-black/20 px-2 py-[3px] text-[10px] font-semibold">
+                    <span>{level}/5</span>
+                    {hasCert && <BadgeCheck className="size-4 text-emerald-500" />}
+                  </span>
+                )
+
                 return (
-                  <span key={s} className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
-                    {s}
+                  <span key={s} className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
+                    <span>{s}</span>
+                    {level > 0 && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            {levelBadge}
+                          </TooltipTrigger>
+                          <TooltipContent 
+                            className="bg-background border border-primary/40 shadow-lg text-xs p-3 rounded-lg"
+                            sideOffset={5}
+                            side="top"
+                            hideArrow
+                          >
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground">Proeficiência:</span>
+                                <span className="inline-flex items-center rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                                  {level}/5
+                                </span>
+                              </div>
+                              {hasCert && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-muted-foreground">Certificado validado:</span>
+                                  <BadgeCheck className="size-4 text-emerald-500" />
+                                </div>
+                              )}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                   </span>
                 )
               })}
@@ -433,106 +484,106 @@ export function Perfil() {
                   </Button>
                 </DrawerTrigger>
                 <DrawerContent>
-                    <DrawerHeader>
-                      <DrawerTitle>Organizar competências em destaque</DrawerTitle>
-                      <DrawerDescription>
-                        Arraste para ordenar como preferir.
-                      </DrawerDescription>
-                    </DrawerHeader>
-                    <div className="p-4 space-y-2">
-                      {draftSkills.map((s, i) => (
-                        <div
-                          key={s}
-                          className="flex items-center justify-between rounded-md border px-3 py-2 text-sm select-none"
-                          draggable
-                          onDragStart={() => setDragIndex(i)}
-                          onDragOver={(e) => {
-                            e.preventDefault()
-                            if (dragIndex === null || dragIndex === i) return
-                            setDraftSkills((prev) => reorder(prev, dragIndex, i))
-                            setDragIndex(i)
-                          }}
-                        >
-                          <div className="flex items-center gap-3">
-                            <GripVertical className="size-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">{i + 1}.</span>
-                            <span className="font-medium">{s}</span>
-                          </div>
-                          <button
-                            className="rounded-md border px-2 py-1 text-xs hover:bg-accent"
-                            onClick={() => setDraftSkills((prev) => prev.filter((x) => x !== s))}
-                            type="button"
-                          >
-                            <X className="size-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="p-4 pt-0 space-y-2">
-                      <div className="text-xs font-medium">Disponíveis</div>
-                      <div className="flex flex-wrap gap-2">
-                        {allCompetencias
-                          .filter(c => !draftSkills.includes(c.nome))
-                          .map(c => (
-                            <button
-                              key={c.id_competencia}
-                              className="rounded-md border px-2 py-1 text-xs hover:bg-accent disabled:opacity-50"
-                              disabled={draftSkills.length >= 4}
-                              onClick={() => {
-                                if (draftSkills.length >= 4) return
-                                setDraftSkills((prev) => [...prev, c.nome])
-                              }}
-                            >
-                              {c.nome}
-                            </button>
-                          ))}
-                      </div>
-                      {draftSkills.length >= 4 && (
-                        <div className="text-xs text-muted-foreground">Limite de 4 competências em destaque.</div>
-                      )}
-                    </div>
-                    <DrawerFooter>
-                      <DrawerClose asChild>
-                        <Button variant="outline" onClick={() => setDraftSkills(skills)}>Cancelar</Button>
-                      </DrawerClose>
-                      <Button
-                        onClick={async () => {
-                          const nextNames = draftSkills.slice(0, 4)
-                          const next = nextNames.map((nome, idx) => {
-                            const found = skillItems.find(i => i.nome === nome)
-                            if (found) return { id: found.id, ordem: idx + 1 }
-                            const comp = allCompetencias.find(c => c.nome === nome)
-                            return comp ? { id_competencia: comp.id_competencia, ordem: idx + 1 } : null
-                          }).filter(Boolean) as { id?: number; id_competencia?: number; ordem: number }[]
-                          try {
-                            await api.patch(`/colaboradores/${user!.id}/perfil`, { competencias: next })
-                            setSkills(nextNames)
-                            const { data } = await api.get<Colaborador>(`/colaboradores/${encodeURIComponent(user!.id)}/perfil`)
-                            const atualizadas = (data.competencias ?? [])
-                              .filter((cc) => cc.ordem != null && (cc.ordem as number) > 0)
-                              .slice()
-                              .sort((a: ColaboradorCompetencia, b: ColaboradorCompetencia) => (a.ordem as number) - (b.ordem as number))
-                              .map((cc) => ({ id: cc.id, nome: cc.competencia?.nome ?? '', ordem: (cc.ordem as number), level: (cc.proeficiencia as number) || 0 }))
-                              .filter((i) => Boolean(i.nome))
-                            setSkillItems(atualizadas.slice(0, 4))
-                            if ((data as any).avatar) {
-                              const s = (data as any).avatar as string
-                              setProfilePhoto(s.startsWith('data:') ? s : `data:image/png;base64,${s}`)
-                            }
-                            if ((data as any).capa) {
-                              const s = (data as any).capa as string
-                              setProfileCover(s.startsWith('data:') ? s : `data:image/png;base64,${s}`)
-                            }
-                            if ((data as any).atualizado_em) setLastUpdated(new Date((data as any).atualizado_em))
-                            toast.success('Competências destacadas atualizadas')
-                          } finally {
-                            setDrawerOpen(false)
-                          }
+                  <DrawerHeader>
+                    <DrawerTitle>Organizar competências em destaque</DrawerTitle>
+                    <DrawerDescription>
+                      Arraste para ordenar como preferir.
+                    </DrawerDescription>
+                  </DrawerHeader>
+                  <div className="p-4 space-y-2">
+                    {draftSkills.map((s, i) => (
+                      <div
+                        key={s}
+                        className="flex items-center justify-between rounded-md border px-3 py-2 text-sm select-none"
+                        draggable
+                        onDragStart={() => setDragIndex(i)}
+                        onDragOver={(e) => {
+                          e.preventDefault()
+                          if (dragIndex === null || dragIndex === i) return
+                          setDraftSkills((prev) => reorder(prev, dragIndex, i))
+                          setDragIndex(i)
                         }}
                       >
-                        Salvar
-                      </Button>
-                    </DrawerFooter>
+                        <div className="flex items-center gap-3">
+                          <GripVertical className="size-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">{i + 1}.</span>
+                          <span className="font-medium">{s}</span>
+                        </div>
+                        <button
+                          className="rounded-md border px-2 py-1 text-xs hover:bg-accent"
+                          onClick={() => setDraftSkills((prev) => prev.filter((x) => x !== s))}
+                          type="button"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="p-4 pt-0 space-y-2">
+                    <div className="text-xs font-medium">Disponíveis</div>
+                    <div className="flex flex-wrap gap-2">
+                      {allCompetencias
+                        .filter(c => !draftSkills.includes(c.nome))
+                        .map(c => (
+                          <button
+                            key={c.id_competencia}
+                            className="rounded-md border px-2 py-1 text-xs hover:bg-accent disabled:opacity-50"
+                            disabled={draftSkills.length >= 4}
+                            onClick={() => {
+                              if (draftSkills.length >= 4) return
+                              setDraftSkills((prev) => [...prev, c.nome])
+                            }}
+                          >
+                            {c.nome}
+                          </button>
+                        ))}
+                    </div>
+                    {draftSkills.length >= 4 && (
+                      <div className="text-xs text-muted-foreground">Limite de 4 competências em destaque.</div>
+                    )}
+                  </div>
+                  <DrawerFooter>
+                    <DrawerClose asChild>
+                      <Button variant="outline" onClick={() => setDraftSkills(skills)}>Cancelar</Button>
+                    </DrawerClose>
+                    <Button
+                      onClick={async () => {
+                        const nextNames = draftSkills.slice(0, 4)
+                        const next = nextNames.map((nome, idx) => {
+                          const found = skillItems.find(i => i.nome === nome)
+                          if (found) return { id: found.id, ordem: idx + 1 }
+                          const comp = allCompetencias.find(c => c.nome === nome)
+                          return comp ? { id_competencia: comp.id_competencia, ordem: idx + 1 } : null
+                        }).filter(Boolean) as { id?: number; id_competencia?: number; ordem: number }[]
+                        try {
+                          await api.patch(`/colaboradores/${user!.id}/perfil`, { competencias: next })
+                          setSkills(nextNames)
+                          const { data } = await api.get<Colaborador>(`/colaboradores/${encodeURIComponent(user!.id)}/perfil`)
+                          const atualizadas = (data.competencias ?? [])
+                            .filter((cc) => cc.ordem != null && (cc.ordem as number) > 0)
+                            .slice()
+                            .sort((a: ColaboradorCompetencia, b: ColaboradorCompetencia) => (a.ordem as number) - (b.ordem as number))
+                            .map((cc) => ({ id: cc.id, nome: cc.competencia?.nome ?? '', ordem: (cc.ordem as number), level: (cc.proeficiencia as number) || 0 }))
+                            .filter((i) => Boolean(i.nome))
+                          setSkillItems(atualizadas.slice(0, 4))
+                          if ((data as any).avatar) {
+                            const s = (data as any).avatar as string
+                            setProfilePhoto(s.startsWith('data:') ? s : `data:image/png;base64,${s}`)
+                          }
+                          if ((data as any).capa) {
+                            const s = (data as any).capa as string
+                            setProfileCover(s.startsWith('data:') ? s : `data:image/png;base64,${s}`)
+                          }
+                          if ((data as any).atualizado_em) setLastUpdated(new Date((data as any).atualizado_em))
+                          toast.success('Competências destacadas atualizadas')
+                        } finally {
+                          setDrawerOpen(false)
+                        }
+                      }}
+                    >
+                      Salvar
+                    </Button>
+                  </DrawerFooter>
                 </DrawerContent>
               </Drawer>
             </div>
@@ -548,7 +599,7 @@ export function Perfil() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Competências cadastradas</span>
-                <span className="text-sm font-medium">12</span>
+                <span className="text-sm font-medium">{allCompetencias.length}</span>
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -568,24 +619,24 @@ export function Perfil() {
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-            <div className="text-xs text-muted-foreground">Nome</div>
-            <div className="text-sm font-medium">{profileName || user?.name || '—'}</div>
+              <div className="text-xs text-muted-foreground">Nome</div>
+              <div className="text-sm font-medium">{profileName || user?.name || '—'}</div>
             </div>
             <div>
-            <div className="text-xs text-muted-foreground">Vínculo</div>
-            <div className="text-sm font-medium">{formatTenure(createdAtDate)}</div>
+              <div className="text-xs text-muted-foreground">Vínculo</div>
+              <div className="text-sm font-medium">{formatTenure(createdAtDate)}</div>
             </div>
             <div>
-            <div className="text-xs text-muted-foreground">Cargo</div>
-            <div className="text-sm font-medium">{profileCargo || '—'}</div>
+              <div className="text-xs text-muted-foreground">Cargo</div>
+              <div className="text-sm font-medium">{profileCargo || '—'}</div>
             </div>
             <div>
-            <div className="text-xs text-muted-foreground">Email</div>
-            <div className="text-sm font-medium">{profileEmail || user?.email || '—'}</div>
+              <div className="text-xs text-muted-foreground">Email</div>
+              <div className="text-sm font-medium">{profileEmail || user?.email || '—'}</div>
             </div>
             <div>
-            <div className="text-xs text-muted-foreground">Local</div>
-            <div className="text-sm font-medium">{profileLocation || '—'}</div>
+              <div className="text-xs text-muted-foreground">Local</div>
+              <div className="text-sm font-medium">{profileLocation || '—'}</div>
             </div>
           </div>
         </CardContent>

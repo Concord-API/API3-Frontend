@@ -16,6 +16,7 @@ export interface Cargo {
     id_cargo: number;
     nome_cargo: string;
     desc_cargo?: string | null;
+    role?: UserRole;
     id_setor: number;
     setor?: Setor;
     status: boolean;
@@ -30,6 +31,15 @@ export interface Equipe {
     status: boolean;
 }
 
+export interface Squad {
+    id: number;
+    nome: string;
+    descricao?: string | null;
+    status: boolean;
+    membrosCount?: number;
+    liderId?: number | null;
+}
+
 export interface Colaborador {
     id_colaborador: number;
     cpf?: string | null;
@@ -40,7 +50,7 @@ export interface Colaborador {
     email: string;
     senha: string;
     status: boolean;
-    role: UserRole;
+    role?: UserRole;
     avatar?: string | null;
     capa?: string | null;
     criado_em?: string | null;
@@ -56,6 +66,7 @@ export interface Competencia {
     id_competencia: number;
     nome: string;
     tipo: CompetenciaTipo;
+    aprovada?: boolean;
 }
 
 export interface ColaboradorCompetencia {
@@ -64,6 +75,7 @@ export interface ColaboradorCompetencia {
     id_competencia: number;
     proeficiencia: number;
     ordem?: number | null;
+    certificado?: boolean;
     colaborador?: Colaborador;
     competencia?: Competencia;
 }

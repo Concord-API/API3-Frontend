@@ -9,15 +9,16 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { api } from '@/shared/lib/api'
 import type { ColaboradorCompetencia, Competencia } from '@/shared/types'
-import { Check, Trash, ChevronDown, Plus } from 'lucide-react'
+import { Check, Trash, ChevronDown, Plus, AlertTriangle, BadgeCheck, Eye } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip'
 import { toast } from 'sonner'
 import { ButtonGroup } from '@/shared/components/ui/button-group'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/shared/components/ui/command'
 import { Skeleton } from '@/shared/components/ui/skeleton'
+import { CertificateViewerModal } from '@/features/dashboard/components/CertificateViewerModal'
 
 type UserCompetenciaItem = ColaboradorCompetencia & { competencia: Competencia }
 
-// Normaliza valores possíveis de tipo ("HARD"|"SOFT"|0|1) para 0|1
 const normalizeTipo = (t: unknown): 0 | 1 => {
   if (t === 0 || t === 1) return t as 0 | 1
   const v = String(t).toUpperCase()
@@ -53,6 +54,12 @@ export function Competencias() {
   const comboRef = useRef<HTMLDivElement | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
+  const [newCertDataUrl, setNewCertDataUrl] = useState<string | null>(null)
+
+  const [editCertDataUrl, setEditCertDataUrl] = useState<string | null>(null)
+  const [viewerOpen, setViewerOpen] = useState(false)
+  const [viewerItemId, setViewerItemId] = useState<number | null>(null)
+  const [viewerItemName, setViewerItemName] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     function onDocMouseDown(e: MouseEvent) {
@@ -81,9 +88,9 @@ export function Competencias() {
   }, [userCompetencias])
 
   const levelCounts = useMemo(() => {
-    const counts: Record<1|2|3|4|5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+    const counts: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
     for (const uc of userCompetencias) {
-      const v = Math.min(5, Math.max(1, uc.proeficiencia as number)) as 1|2|3|4|5
+      const v = Math.min(5, Math.max(1, uc.proeficiencia as number)) as 1 | 2 | 3 | 4 | 5
       counts[v] += 1
     }
     return counts
@@ -118,7 +125,7 @@ export function Competencias() {
         const hasNested = uc && typeof uc === 'object' && uc.competencia
         const competencia = hasNested
           ? { ...uc.competencia, tipo: normalizeTipo(uc.competencia.tipo) }
-          : { id_competencia: uc.id, nome: uc.nome, tipo: normalizeTipo(uc.tipo) }
+          : { id_competencia: uc.idCompetencia, nome: uc.nome, tipo: normalizeTipo(uc.tipo), aprovada: uc.aprovada }
         return {
           ...uc,
           id_competencia: hasNested ? (uc.id_competencia ?? competencia.id_competencia) : competencia.id_competencia,
@@ -142,17 +149,21 @@ export function Competencias() {
     try {
       let comp = selected
       if (!comp) {
-        // cria se não existe
         const create = await api.post('/competencias', { nome: query.trim(), tipo: newType })
         const created = create.data as any
         comp = { id_competencia: created.id, nome: created.nome, tipo: normalizeTipo(created.tipo) } as Competencia
       }
       await api.patch(`/colaboradores/${encodeURIComponent(user.id)}/competencias`, {
-        items: [{ competenciaId: comp!.id_competencia, proeficiencia: newLevel }],
+        items: [{
+          competenciaId: comp!.id_competencia,
+          proeficiencia: newLevel,
+          certificado: newCertDataUrl ?? undefined,
+        }],
       })
       setQuery('')
       setSelected(null)
       setNewLevel(3)
+      setNewCertDataUrl(null)
       await loadData()
       toast.success('Competência adicionada')
     } finally {
@@ -164,7 +175,7 @@ export function Competencias() {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[0,1,2,3].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <Card key={i}>
               <CardHeader>
                 <Skeleton className="h-4 w-24" />
@@ -269,105 +280,139 @@ export function Competencias() {
               <CardDescription>Visão geral das suas competências e níveis</CardDescription>
             </div>
             <Sheet>
-            <SheetTrigger asChild>
-              <Button>Adicionar</Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="sm:max-w-[520px] px-4">
-              <SheetHeader>
-                <SheetTitle>Adicionar competência</SheetTitle>
-                <SheetDescription>Escolha uma existente ou crie uma nova</SheetDescription>
-              </SheetHeader>
-              <div className="mt-4 space-y-5">
-            <div className="space-y-2">
-              <Label>Competência</Label>
-              <div ref={comboRef}>
-                {!comboOpen ? (
-                  <Button variant="outline" className="justify-between w-full" onClick={() => setComboOpen(true)}>
-                    <span className="truncate">{(isCreating && query) ? `Criar: ${query}` : (selected?.nome || (query ? query : 'Selecionar/Buscar'))}</span>
-                    <ChevronDown className="size-4" />
-                  </Button>
-                ) : (
-                  <div className="rounded-md border">
-                    <Command>
-                      <CommandInput
-                        placeholder="Digite para buscar ou criar..."
-                        value={query}
-                        onValueChange={(v) => { setQuery(v); if (selected) setSelected(null); setIsCreating(false) }}
-                      />
-                      <CommandList>
-                        <CommandEmpty>
-                          {query ? (
-                            <div className="px-2 py-2 text-sm">
-                              Nenhuma encontrada. Se preferir, continue para criar "{query}".
-                            </div>
-                          ) : (
-                            'Digite para buscar'
-                          )}
-                        </CommandEmpty>
-                        <CommandGroup>
-                          {filtered.map((c) => (
-                            <CommandItem key={c.id_competencia} onSelect={() => { setSelected(c); setQuery(c.nome); setIsCreating(false); setComboOpen(false) }}>
-                              <Check className={`mr-2 size-4 ${selected?.id_competencia === c.id_competencia ? 'opacity-100' : 'opacity-0'}`} />
-                              <span className="truncate">{c.nome}</span>
-                            </CommandItem>
-                          ))}
-                          {query && !allCompetencias.some((a) => (a?.nome || '').toLowerCase() === query.toLowerCase()) && (
-                            <CommandItem className="text-primary" onSelect={() => { setSelected(null); setIsCreating(true); setComboOpen(false) }}>
-                              <Plus className="mr-2 size-4" />
-                              Criar "{query}" como nova competência
-                            </CommandItem>
-                          )}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </div>
-                )}
-              </div>
-              <div className="text-xs text-muted-foreground">{isCreating ? (
-                <>Você criará a competência "{query}". Defina o Tipo e o Nível e clique em Adicionar.</>
-              ) : (
-                <>Se não existir, continue preenchendo o Tipo e o Nível abaixo e clique em Adicionar.</>
-              )}</div>
-            </div>
-                {!selected && (
+              <SheetTrigger asChild>
+                <Button>Adicionar</Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="sm:max-w-[520px] px-4">
+                <SheetHeader>
+                  <SheetTitle>Adicionar competência</SheetTitle>
+                  <SheetDescription>Escolha uma existente ou crie uma nova</SheetDescription>
+                </SheetHeader>
+                <div className="mt-4 space-y-5">
                   <div className="space-y-2">
-                    <Label>Tipo</Label>
-                    <ButtonGroup>
-                      <Button variant={newType === 0 ? 'default' : 'outline'} onClick={() => setNewType(0)}>HARD</Button>
-                      <Button variant={newType === 1 ? 'default' : 'outline'} onClick={() => setNewType(1)}>SOFT</Button>
-                    </ButtonGroup>
+                    <Label>Competência</Label>
+                    <div ref={comboRef}>
+                      {!comboOpen ? (
+                        <Button variant="outline" className="justify-between w-full" onClick={() => setComboOpen(true)}>
+                          <span className="truncate">{(isCreating && query) ? `Criar: ${query}` : (selected?.nome || (query ? query : 'Selecionar/Buscar'))}</span>
+                          <ChevronDown className="size-4" />
+                        </Button>
+                      ) : (
+                        <div className="rounded-md border">
+                          <Command>
+                            <CommandInput
+                              placeholder="Digite para buscar ou criar..."
+                              value={query}
+                              onValueChange={(v) => { setQuery(v); if (selected) setSelected(null); setIsCreating(false) }}
+                            />
+                            <CommandList>
+                              <CommandEmpty>
+                                {query ? (
+                                  <div className="px-2 py-2 text-sm">
+                                    Nenhuma encontrada. Se preferir, continue para criar "{query}".
+                                  </div>
+                                ) : (
+                                  'Digite para buscar'
+                                )}
+                              </CommandEmpty>
+                              <CommandGroup>
+                                {filtered.map((c) => (
+                                  <CommandItem key={c.id_competencia} onSelect={() => { setSelected(c); setQuery(c.nome); setIsCreating(false); setComboOpen(false) }}>
+                                    <Check className={`mr-2 size-4 ${selected?.id_competencia === c.id_competencia ? 'opacity-100' : 'opacity-0'}`} />
+                                    <span className="truncate">{c.nome}</span>
+                                    {c.aprovada === false && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <AlertTriangle className="ml-2 size-3 text-yellow-500" />
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Aguardando aprovação</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                  </CommandItem>
+                                ))}
+                                {query && !allCompetencias.some((a) => (a?.nome || '').toLowerCase() === query.toLowerCase()) && (
+                                  <CommandItem className="text-primary" onSelect={() => { setSelected(null); setIsCreating(true); setComboOpen(false) }}>
+                                    <Plus className="mr-2 size-4" />
+                                    Criar "{query}" como nova competência
+                                  </CommandItem>
+                                )}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{isCreating ? (
+                      <>Você criará a competência "{query}". Defina o Tipo e o Nível e clique em Adicionar.</>
+                    ) : (
+                      <>Se não existir, continue preenchendo o Tipo e o Nível abaixo e clique em Adicionar.</>
+                    )}</div>
                   </div>
-                )}
-                <div className="space-y-2">
-                  <Label>Nível de proeficiência</Label>
-                  <ButtonGroup>
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <Button key={n} variant={newLevel === n ? 'default' : 'outline'} onClick={() => setNewLevel(n)}>
-                        {n}
-                      </Button>
-                    ))}
-                  </ButtonGroup>
-                  <div className="text-xs text-muted-foreground">{NIVEL_LABEL[newLevel]}</div>
+                  {!selected && (
+                    <div className="space-y-2">
+                      <Label>Tipo</Label>
+                      <ButtonGroup>
+                        <Button variant={newType === 0 ? 'default' : 'outline'} onClick={() => setNewType(0)}>HARD</Button>
+                        <Button variant={newType === 1 ? 'default' : 'outline'} onClick={() => setNewType(1)}>SOFT</Button>
+                      </ButtonGroup>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label>Nível de proeficiência</Label>
+                    <ButtonGroup>
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <Button key={n} variant={newLevel === n ? 'default' : 'outline'} onClick={() => setNewLevel(n)}>
+                          {n}
+                        </Button>
+                      ))}
+                    </ButtonGroup>
+                    <div className="text-xs text-muted-foreground">{NIVEL_LABEL[newLevel]}</div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Certificado (opcional)</Label>
+                    <Input
+                      type="file"
+                      accept="application/pdf,image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) {
+                          setNewCertDataUrl(null)
+                          return
+                        }
+                        const reader = new FileReader()
+                        reader.onload = () => {
+                          setNewCertDataUrl(typeof reader.result === 'string' ? reader.result : null)
+                        }
+                        reader.readAsDataURL(file)
+                      }}
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Arquivos em PDF ou imagem para comprovar sua proeficiência.
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <SheetFooter className="mt-6">
-                <SheetClose asChild>
-                  <Button variant="outline">Cancelar</Button>
-                </SheetClose>
-                <Button onClick={handleAdd} disabled={loading || !query.trim()}>Adicionar</Button>
-              </SheetFooter>
-            </SheetContent>
+                <SheetFooter className="mt-6">
+                  <SheetClose asChild>
+                    <Button variant="outline">Cancelar</Button>
+                  </SheetClose>
+                  <Button onClick={handleAdd} disabled={loading || !query.trim()}>Adicionar</Button>
+                </SheetFooter>
+              </SheetContent>
             </Sheet>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex-1 min-w-48">
               <Input placeholder="Buscar por nome..." value={queryTable} onChange={(e) => setQueryTable(e.target.value)} />
             </div>
-			<ButtonGroup>
-				<Button variant={filterType === 'ALL' ? 'default' : 'outline'} onClick={() => setFilterType('ALL')}>Todos</Button>
-				<Button variant={filterType === 'HARD' ? 'default' : 'outline'} onClick={() => setFilterType('HARD')}>HARD</Button>
-				<Button variant={filterType === 'SOFT' ? 'default' : 'outline'} onClick={() => setFilterType('SOFT')}>SOFT</Button>
-			</ButtonGroup>
+            <ButtonGroup>
+              <Button variant={filterType === 'ALL' ? 'default' : 'outline'} onClick={() => setFilterType('ALL')}>Todos</Button>
+              <Button variant={filterType === 'HARD' ? 'default' : 'outline'} onClick={() => setFilterType('HARD')}>HARD</Button>
+              <Button variant={filterType === 'SOFT' ? 'default' : 'outline'} onClick={() => setFilterType('SOFT')}>SOFT</Button>
+            </ButtonGroup>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">Ordenar</Button>
@@ -388,6 +433,7 @@ export function Competencias() {
                   <th className="py-2 pr-4 font-medium">Competência</th>
                   <th className="py-2 pr-4 font-medium">Tipo</th>
                   <th className="py-2 pr-4 font-medium">Proeficiência</th>
+                  <th className="py-2 pr-4 font-medium">Certificado</th>
                   <th className="py-2 pr-2 font-medium text-right">Ações</th>
                 </tr>
               </thead>
@@ -414,7 +460,21 @@ export function Competencias() {
                   return (
                     <tr key={uc.id} className="border-t">
                       <td className="py-3 pr-4">
-                        <div className="font-medium truncate">{uc.competencia?.nome}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium truncate">{uc.competencia?.nome}</div>
+                          {uc.competencia?.aprovada === false && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <AlertTriangle className="size-4 text-yellow-500" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Aguardando aprovação</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 pr-4">
                         <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${typeBadge}`}>
@@ -426,17 +486,46 @@ export function Competencias() {
                           <div className="h-2 w-40 rounded-full bg-secondary">
                             <div className={`h-2 rounded-full ${color}`} style={{ width: `${pct}%` }} />
                           </div>
-                          <div className="whitespace-nowrap text-xs text-muted-foreground">{NIVEL_LABEL[uc.proeficiencia]} ({uc.proeficiencia}/5)</div>
+                          <div className="whitespace-nowrap text-xs text-muted-foreground">
+                            {NIVEL_LABEL[uc.proeficiencia]} ({uc.proeficiencia}/5)
+                          </div>
                         </div>
                       </td>
+                      <td className="py-3 pr-4">
+                        <span className="inline-flex items-center gap-1 text-xs font-medium">
+                          {uc.certificado && <BadgeCheck className="size-3.5 text-emerald-500" />}
+                          <span>{uc.certificado ? 'Tem certificado' : 'Sem certificado'}</span>
+                        </span>
+                      </td>
                       <td className="py-3 pr-2 text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => { setEditItem(uc); setEditLevel(uc.proeficiencia); setEditOpen(true) }}
-                        >
-                          Editar
-                        </Button>
+                        <div className="inline-flex items-center gap-2">
+                          {uc.certificado && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setViewerItemId(uc.id)
+                                setViewerItemName(uc.competencia?.nome)
+                                setViewerOpen(true)
+                              }}
+                            >
+                              <Eye className="size-3.5 mr-1" />
+                              Ver certificado
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditItem(uc)
+                              setEditLevel(uc.proeficiencia)
+                              setEditCertDataUrl(null)
+                              setEditOpen(true)
+                            }}
+                          >
+                            Editar
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -451,7 +540,7 @@ export function Competencias() {
         <DialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Editar competência</DialogTitle>
-            <DialogDescription>Atualize a proeficiência desta competência</DialogDescription>
+            <DialogDescription>Atualize a proeficiência e, se quiser, anexe um certificado</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1">
@@ -469,6 +558,33 @@ export function Competencias() {
                 onChange={(e) => setEditLevel(Number(e.target.value))}
                 className="w-full accent-primary"
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Certificado</Label>
+              <div className="text-xs text-muted-foreground mb-1">
+                {editItem?.certificado
+                  ? 'Já existe um certificado anexado para esta competência.'
+                  : 'Nenhum certificado anexado ainda.'}
+              </div>
+              <Input
+                type="file"
+                accept="application/pdf,image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) {
+                    setEditCertDataUrl(null)
+                    return
+                  }
+                  const reader = new FileReader()
+                  reader.onload = () => {
+                    setEditCertDataUrl(typeof reader.result === 'string' ? reader.result : null)
+                  }
+                  reader.readAsDataURL(file)
+                }}
+              />
+              <div className="text-xs text-muted-foreground">
+                Se você escolher um novo arquivo, o certificado será atualizado.
+              </div>
             </div>
           </div>
           <DialogFooter className="sm:justify-between">
@@ -497,7 +613,13 @@ export function Competencias() {
                 try {
                   const compId = (editItem.competencia?.id_competencia ?? editItem.id_competencia ?? editItem.id)
                   await api.patch(`/colaboradores/${encodeURIComponent(user.id)}/competencias`, {
-                    items: [{ competenciaId: compId, proeficiencia: editLevel }],
+                    items: [{
+                      competenciaId: compId,
+                      proeficiencia: editLevel,
+                      // Só envia certificado se o usuário selecionou um novo arquivo;
+                      // se ficar null, backend mantém o existente.
+                      certificado: editCertDataUrl ?? undefined,
+                    }],
                   })
                   await loadData()
                   toast.success('Proeficiência atualizada')
@@ -513,6 +635,14 @@ export function Competencias() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CertificateViewerModal
+        open={viewerOpen}
+        onOpenChange={setViewerOpen}
+        colaboradorId={user?.id ? Number(user.id) : null}
+        competenciaItemId={viewerItemId}
+        competenciaNome={viewerItemName}
+      />
     </div>
   )
 }
